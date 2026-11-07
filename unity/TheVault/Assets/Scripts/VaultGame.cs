@@ -31,7 +31,7 @@ public class VaultGame : MonoBehaviour
     readonly Dictionary<Item, GameObject> itemGo = new Dictionary<Item, GameObject>();
     readonly List<Light> roomLights = new List<Light>();
     readonly List<Transform> signs = new List<Transform>();
-    Texture2D minimap; float minimapTimer; Vector2 pmScroll; float runNoise;
+    Texture2D minimap; float minimapTimer; Vector2 pmScroll, panelScroll; float runNoise;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Boot()
@@ -526,18 +526,23 @@ public class VaultGame : MonoBehaviour
             GUI.color = new Color(0, 0, 0, 0.92f); GUI.DrawTexture(new Rect(0, 0, sw, sh * 0.42f), Texture2D.whiteTexture); GUI.DrawTexture(new Rect(0, sh * 0.58f, sw, sh * 0.42f), Texture2D.whiteTexture); GUI.color = Color.white;
             GUI.Label(new Rect(0, sh * 0.6f, sw, 30), "Hiding in " + player.locker.id + " (E to leave)", S(16, DIM, false, TextAnchor.MiddleCenter));
         }
-        GUI.Label(new Rect(sw / 2 - 5, sh / 2 - 10, 20, 20), "+", S(16, new Color(1, 1, 1, 0.6f)));
+        // play area = screen minus the side panel, so nothing hides behind it; every label wraps + measures its height
+        float pw = PlayW, ui = UiScale;
+        GUI.Label(new Rect(pw / 2 - 5, sh / 2 - 10, 20, 20), "+", S(16, new Color(1, 1, 1, 0.6f)));
         float left = Mathf.Max(0, GameSeconds - elapsed);
         string threat = broker.Threat; string tc = threat == "ACTIVE HUNT" ? "#ff4040" : threat == "INVESTIGATION" ? "#ffb040" : "#6bd68a";
         string roomsTxt = string.Join(" · ", rooms.Values.Select(r => $"{r.name} {(r.done ? "✓" : r.active ? $"[{r.locks}/3]" : "✗")}"));
-        GUI.Label(new Rect(12, 8, 1100, 26), $"<b><color=#e04848>THE VAULT: OUTBREAK</color></b>   <b>DAY {day} of 3</b>   <color={tc}><b>{threat}</b></color>   {(int)(left / 60)}:{(int)(left % 60):00}   rooms: {roomsTxt}   bottles {bottles}{(player.crouched ? "   <color=#7fb3d5>CROUCHING</color>" : "")}", S(16, Color.white));
-        GUI.Label(new Rect(12, 32, 1100, 22), "WASD move · SHIFT run (loud) · C crouch (under cameras) · E interact/hide/terminal · SPACE throw · TAB panel · V reveal hunter on map · ESC mouse", S(12, DIM));
+        float y = 6;
+        y = WrapLabel(new Rect(12, y, pw - 24, 0), $"<b><color=#e04848>THE VAULT</color></b>  <b>DAY {day}/3</b>  <color={tc}><b>{threat}</b></color>  {(int)(left / 60)}:{(int)(left % 60):00}  rooms: {roomsTxt}  bottles {bottles}{(player.crouched ? "  <color=#7fb3d5>CROUCHING</color>" : "")}", S(Fs(16), Color.white));
+        y = WrapLabel(new Rect(12, y, pw - 24, 0), "WASD move · SHIFT run (loud) · C crouch · E interact/hide/terminal · SPACE throw · TAB panel · V hunter on map · ESC mouse", S(Fs(12), DIM));
         var ar = ActiveRoom;
-        DrawObjective(sw, sh, ar);
+        y = DrawObjective(pw, y + 4, ar);
         if (ar != null && !ar.breached && !puzzleOpen)
-            GUI.Label(new Rect(sw * 0.2f, 150, sw * 0.6f, 30), $"<b>{ar.title} LOCKDOWN</b>  locks {new string('■', ar.locks)}{new string('□', 3 - ar.locks)}  {Mathf.CeilToInt(ar.timer)} s  · go to the terminal and press E", S(17, Color.yellow, false, TextAnchor.MiddleCenter));
-        GUI.Label(new Rect(sw * 0.15f, sh - 90, sw * 0.7f, 40), "<b>THE BROKER:</b> " + subtitle, S(20, RED, false, TextAnchor.MiddleCenter));
-        if (Time.time < toastUntil) GUI.Label(new Rect(sw * 0.15f, sh - 130, sw * 0.7f, 30), toast, S(16, Color.yellow, false, TextAnchor.MiddleCenter));
+            WrapLabel(new Rect(12, y, pw - 24, 0), $"<b>{ar.title} LOCKDOWN</b>  locks {new string('■', ar.locks)}{new string('□', 3 - ar.locks)}  {Mathf.CeilToInt(ar.timer)} s", S(Fs(17), Color.yellow, false, TextAnchor.MiddleCenter));
+        var subS = S(Fs(20), RED, false, TextAnchor.MiddleCenter); string subT = "<b>THE BROKER:</b> " + subtitle;
+        float subH = subS.CalcHeight(new GUIContent(subT), pw * 0.9f);
+        GUI.Label(new Rect(pw * 0.05f, sh - subH - 16, pw * 0.9f, subH), subT, subS);
+        if (Time.time < toastUntil) { var ts = S(Fs(16), Color.yellow, false, TextAnchor.MiddleCenter); float th = ts.CalcHeight(new GUIContent(toast), pw * 0.9f); GUI.Label(new Rect(pw * 0.05f, sh - subH - th - 24, pw * 0.9f, th), toast, ts); }
         if (Time.time < dayBannerUntil)
         {
             GUI.color = new Color(0, 0, 0, Mathf.Clamp01(dayBannerUntil - Time.time)); GUI.DrawTexture(new Rect(0, 0, sw, sh), Texture2D.whiteTexture); GUI.color = Color.white;
@@ -545,11 +550,15 @@ public class VaultGame : MonoBehaviour
         }
         DrawMinimap();
         if (showPanel) DrawPanel();
+        else
+        {
+            if (GUI.Button(new Rect(sw - 190, 8, 180, 28), "◂ BROKER panel (TAB)")) showPanel = true;
+        }
         if (puzzleOpen && ar != null)
         {
-            float w = Mathf.Min(560, sw - 40), h = 420, x = (sw - w) / 2 - (showPanel ? 200 : 0), y = (sh - h) / 2;
-            GUI.color = new Color(0.02f, 0.03f, 0.04f, 0.95f); GUI.DrawTexture(new Rect(x - 10, y - 10, w + 20, h + 20), Texture2D.whiteTexture); GUI.color = Color.white;
-            int res = ar.DrawPuzzle(new Rect(x, y, w, h), S(18, RED), S(14, Color.white));
+            float w = Mathf.Min(560, pw - 40), h = Mathf.Min(440, sh - 40), x = (pw - w) / 2, py = (sh - h) / 2;
+            GUI.color = new Color(0.02f, 0.03f, 0.04f, 0.95f); GUI.DrawTexture(new Rect(x - 10, py - 10, w + 20, h + 20), Texture2D.whiteTexture); GUI.color = Color.white;
+            int res = ar.DrawPuzzle(new Rect(x, py, w, h), S(Fs(18), RED), S(Fs(14), Color.white));
             if (res == 1) RoomMistake(ar, ar.name == "power" ? "wrong breaker" : ar.name == "surveillance" ? "wrong code" : "missed the lever");
             else if (res == 2) RoomSolved(ar);
         }
@@ -565,32 +574,51 @@ public class VaultGame : MonoBehaviour
         return ($"FIND THE {r.title}  ({RoomsDone}/3 rooms done)", new Tile(r.room.cx, r.room.cy));
     }
 
-    void DrawObjective(float sw, float sh, EscapeRoom ar)
+    // returns the y below what it drew
+    float DrawObjective(float pw, float y, EscapeRoom ar)
     {
         var (text, target) = CurrentObjective(ar);
-        string dist = "";
+        string dist = ""; float ang = 0; bool arrow = false;
         if (target.HasValue)
         {
             Vector3 to = World(target.Value) - player.transform.position; to.y = 0;
             dist = $"  ·  {Mathf.RoundToInt(to.magnitude)} m";
-            float ang = Vector3.SignedAngle(new Vector3(player.transform.forward.x, 0, player.transform.forward.z), to, Vector3.up);
-            if (!puzzleOpen && to.magnitude > 2.5f)
-            {
-                var pivot = new Vector2(sw / 2, 118);
-                var m = GUI.matrix; GUIUtility.RotateAroundPivot(ang, pivot);
-                GUI.Label(new Rect(pivot.x - 30, pivot.y - 30, 60, 60), "▲", S(44, new Color(1f, 0.85f, 0.2f), true, TextAnchor.MiddleCenter));
-                GUI.matrix = m;
-            }
+            ang = Vector3.SignedAngle(new Vector3(player.transform.forward.x, 0, player.transform.forward.z), to, Vector3.up);
+            arrow = !puzzleOpen && to.magnitude > 2.5f;
         }
-        GUI.color = new Color(0, 0, 0, 0.6f); GUI.DrawTexture(new Rect(sw / 2 - 330, 58, 660, 30), Texture2D.whiteTexture); GUI.color = Color.white;
-        GUI.Label(new Rect(sw / 2 - 330, 58, 660, 30), $"<b>OBJECTIVE:</b> {text}{dist}", S(16, new Color(1f, 0.85f, 0.2f), false, TextAnchor.MiddleCenter));
+        float w = Mathf.Min(pw - 24, 820), x = (pw - w) / 2;
+        var st = S(Fs(16), new Color(1f, 0.85f, 0.2f), false, TextAnchor.MiddleCenter);
+        string content = $"<b>OBJECTIVE:</b> {text}{dist}";
+        float h = st.CalcHeight(new GUIContent(content), w - 16) + 8;
+        GUI.color = new Color(0, 0, 0, 0.65f); GUI.DrawTexture(new Rect(x, y, w, h), Texture2D.whiteTexture); GUI.color = Color.white;
+        GUI.Label(new Rect(x + 8, y + 4, w - 16, h - 8), content, st);
+        y += h + 4;
+        if (arrow)
+        {
+            float a = 44 * UiScale; var pivot = new Vector2(pw / 2, y + a / 2 + 2);
+            var m = GUI.matrix; GUIUtility.RotateAroundPivot(ang, pivot);
+            GUI.Label(new Rect(pivot.x - a, pivot.y - a, a * 2, a * 2), "▲", S(Fs(44), new Color(1f, 0.85f, 0.2f), true, TextAnchor.MiddleCenter));
+            GUI.matrix = m;
+            y += a + 6;
+        }
         objectiveTile = target;
+        return y;
     }
     Tile? objectiveTile;
 
+    // layout helpers: the HUD scales with the window and never sits behind the side panel
+    float UiScale => Mathf.Clamp(Mathf.Min(Screen.width / 1600f, Screen.height / 900f), 0.65f, 1.3f);
+    int Fs(int baseSize) => Mathf.Max(10, Mathf.RoundToInt(baseSize * UiScale));
+    float PanelW => Mathf.Clamp(Screen.width * 0.3f, 260, 420);
+    float PlayW => Screen.width - (showPanel ? PanelW + 20 : 0);
+    float WrapLabel(Rect r, string text, GUIStyle st)
+    {
+        float h = st.CalcHeight(new GUIContent(text), r.width); GUI.Label(new Rect(r.x, r.y, r.width, h), text, st); return r.y + h;
+    }
+
     void StartScreen()
     {
-        float w = 780, h = 500, x = (Screen.width - w) / 2, y = (Screen.height - h) / 2;
+        float w = Mathf.Min(780, Screen.width - 40), h = Mathf.Min(520, Screen.height - 40), x = (Screen.width - w) / 2, y = (Screen.height - h) / 2;
         GUI.color = new Color(0, 0, 0, 0.9f); GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture); GUI.color = Color.white;
         GUILayout.BeginArea(new Rect(x, y, w, h));
         GUILayout.Label("<b>THE VAULT: OUTBREAK</b>", S(34, RED));
@@ -651,11 +679,15 @@ public class VaultGame : MonoBehaviour
 
     void DrawPanel()
     {
-        float w = 420, x = Screen.width - w - 10;
+        float w = PanelW, x = Screen.width - w - 10;
         GUI.color = new Color(0.03f, 0.04f, 0.05f, 0.85f); GUI.DrawTexture(new Rect(x, 10, w, Screen.height - 20), Texture2D.whiteTexture); GUI.color = Color.white;
         GUILayout.BeginArea(new Rect(x + 10, 16, w - 20, Screen.height - 32));
-        var h = S(13, BLUE, true); var b = S(13, Color.white);
-        GUILayout.Label("<b>THE BROKER: LIVE AGENT STATUS</b>", S(15, RED));
+        var h = S(Fs(13), BLUE, true); var b = S(Fs(13), Color.white);
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("<b>THE BROKER: LIVE AGENT STATUS</b>", S(Fs(15), RED));
+        if (GUILayout.Button("✕", GUILayout.Width(28), GUILayout.Height(24))) showPanel = false;
+        GUILayout.EndHorizontal();
+        panelScroll = GUILayout.BeginScrollView(panelScroll);
         GUILayout.Label("Link: " + (client.online ? $"<color=#6bd68a>online (Claude strategist, {client.model})</color>" : "<color=#ff6b6b>offline (fallback rules)</color>"), b);
         GUILayout.Label($"Threat: <b>{broker.Threat}</b> · hunter {broker.state} · {broker.stateReason}", b);
         GUILayout.Label($"Strategy: <b>{broker.strategy.action}</b>{(broker.strategy.target != null ? " → " + broker.strategy.target : "")}", b);
@@ -676,6 +708,7 @@ public class VaultGame : MonoBehaviour
         GUILayout.Label("LATENCY", h);
         float fp = fastSamples.Count > 0 ? fastSamples.Average() : 0;
         GUILayout.Label($"fast path (game loop): <b>{fp:0.00} ms</b>/frame\nstrategist round trip: <b>{(client.Last >= 0 ? client.Last + " ms" : "-")}</b> (p95 {(client.P95 >= 0 ? client.P95 + " ms" : "-")})", b);
+        GUILayout.EndScrollView();
         GUILayout.EndArea();
     }
 
