@@ -533,8 +533,9 @@ public class VaultGame : MonoBehaviour
         GUI.Label(new Rect(12, 8, 1100, 26), $"<b><color=#e04848>THE VAULT: OUTBREAK</color></b>   <b>DAY {day} of 3</b>   <color={tc}><b>{threat}</b></color>   {(int)(left / 60)}:{(int)(left % 60):00}   rooms: {roomsTxt}   bottles {bottles}{(player.crouched ? "   <color=#7fb3d5>CROUCHING</color>" : "")}", S(16, Color.white));
         GUI.Label(new Rect(12, 32, 1100, 22), "WASD move · SHIFT run (loud) · C crouch (under cameras) · E interact/hide/terminal · SPACE throw · TAB panel · V reveal hunter on map · ESC mouse", S(12, DIM));
         var ar = ActiveRoom;
+        DrawObjective(sw, sh, ar);
         if (ar != null && !ar.breached && !puzzleOpen)
-            GUI.Label(new Rect(sw * 0.2f, 60, sw * 0.6f, 30), $"<b>{ar.title} LOCKDOWN</b>  locks {new string('■', ar.locks)}{new string('□', 3 - ar.locks)}  {Mathf.CeilToInt(ar.timer)} s  · go to the terminal and press E", S(17, Color.yellow, false, TextAnchor.MiddleCenter));
+            GUI.Label(new Rect(sw * 0.2f, 150, sw * 0.6f, 30), $"<b>{ar.title} LOCKDOWN</b>  locks {new string('■', ar.locks)}{new string('□', 3 - ar.locks)}  {Mathf.CeilToInt(ar.timer)} s  · go to the terminal and press E", S(17, Color.yellow, false, TextAnchor.MiddleCenter));
         GUI.Label(new Rect(sw * 0.15f, sh - 90, sw * 0.7f, 40), "<b>THE BROKER:</b> " + subtitle, S(20, RED, false, TextAnchor.MiddleCenter));
         if (Time.time < toastUntil) GUI.Label(new Rect(sw * 0.15f, sh - 130, sw * 0.7f, 30), toast, S(16, Color.yellow, false, TextAnchor.MiddleCenter));
         if (Time.time < dayBannerUntil)
@@ -554,6 +555,39 @@ public class VaultGame : MonoBehaviour
         }
     }
 
+    // ---------- objective guidance: always tell the player what to do next + where ----------
+    (string text, Tile? target) CurrentObjective(EscapeRoom ar)
+    {
+        if (ar != null && !ar.breached) return ($"SOLVE THE {ar.title} PUZZLE: walk to the green terminal, press E", new Tile(ar.room.cx, ar.room.cy));
+        if (ar != null && ar.breached) return ("THE ROOM IS BREACHED. RUN! Lose the hunter, then come back", null);
+        if (RoomsDone >= 3) return ("ALL 3 ROOMS DONE: REACH THE CENTRAL EXIT", maze.exitPos);
+        var n = NextRoom(); var r = rooms[n];
+        return ($"FIND THE {r.title}  ({RoomsDone}/3 rooms done)", new Tile(r.room.cx, r.room.cy));
+    }
+
+    void DrawObjective(float sw, float sh, EscapeRoom ar)
+    {
+        var (text, target) = CurrentObjective(ar);
+        string dist = "";
+        if (target.HasValue)
+        {
+            Vector3 to = World(target.Value) - player.transform.position; to.y = 0;
+            dist = $"  ·  {Mathf.RoundToInt(to.magnitude)} m";
+            float ang = Vector3.SignedAngle(new Vector3(player.transform.forward.x, 0, player.transform.forward.z), to, Vector3.up);
+            if (!puzzleOpen && to.magnitude > 2.5f)
+            {
+                var pivot = new Vector2(sw / 2, 118);
+                var m = GUI.matrix; GUIUtility.RotateAroundPivot(ang, pivot);
+                GUI.Label(new Rect(pivot.x - 30, pivot.y - 30, 60, 60), "▲", S(44, new Color(1f, 0.85f, 0.2f), true, TextAnchor.MiddleCenter));
+                GUI.matrix = m;
+            }
+        }
+        GUI.color = new Color(0, 0, 0, 0.6f); GUI.DrawTexture(new Rect(sw / 2 - 330, 58, 660, 30), Texture2D.whiteTexture); GUI.color = Color.white;
+        GUI.Label(new Rect(sw / 2 - 330, 58, 660, 30), $"<b>OBJECTIVE:</b> {text}{dist}", S(16, new Color(1f, 0.85f, 0.2f), false, TextAnchor.MiddleCenter));
+        objectiveTile = target;
+    }
+    Tile? objectiveTile;
+
     void StartScreen()
     {
         float w = 780, h = 500, x = (Screen.width - w) / 2, y = (Screen.height - h) / 2;
@@ -562,9 +596,12 @@ public class VaultGame : MonoBehaviour
         GUILayout.Label("<b>THE VAULT: OUTBREAK</b>", S(34, RED));
         GUILayout.Label("<i>The maze isn't just trapping you. It's learning how you escape.</i>", S(16, new Color(1f, 0.6f, 0.6f)));
         GUILayout.Space(8);
-        GUILayout.Label("You wake up in containment. The facility is run by THE BROKER: it watches through cameras, listens, remembers how you move, and rewires the maze against you. It cannot see everywhere.", S(15, Color.white));
-        GUILayout.Label("<b>Goal:</b> complete the <b>3 escape rooms</b> (Power, Surveillance, Emergency Release) in any order, then reach the <b>central exit</b>. Each room seals you in with 3 locks: every mistake breaks one, and at zero THE BROKER gets in.", S(15, Color.white));
-        GUILayout.Label("<b>You have 3 days.</b> Each capture costs a day. Crouch under cameras, hide in lockers, throw bottles to trick it. But it learns.", S(15, Color.white));
+        GUILayout.Label("<b>HOW TO ESCAPE</b>", S(18, new Color(1f, 0.85f, 0.2f)));
+        GUILayout.Label("<b>1.</b>  Find the <b>3 puzzle rooms</b>. Follow the yellow arrow ▲", S(17, Color.white));
+        GUILayout.Label("<b>2.</b>  Solve each room's puzzle. <b>3 mistakes</b> and the door opens for the monster", S(17, Color.white));
+        GUILayout.Label("<b>3.</b>  Reach the <b>exit in the centre</b> of the maze", S(17, Color.white));
+        GUILayout.Space(4);
+        GUILayout.Label("<color=#ff6b6b><b>THE BROKER</b></color> (red eyes) hunts you and <b>learns your habits</b>. Getting caught costs 1 of your <b>3 days</b>.\nRun = fast but loud · C = crouch under cameras · E = hide in lockers · SPACE = throw a bottle to distract it", S(14, DIM));
         GUILayout.Space(6);
         GUILayout.Label($"Strategist link: {(client != null && client.online ? "<color=#6bd68a>online (Claude)</color>" : "<color=#ff6b6b>offline: fallback rules</color>")}", S(14, DIM));
         GUILayout.BeginHorizontal();
@@ -600,6 +637,11 @@ public class VaultGame : MonoBehaviour
             }
             foreach (var l in maze.lockers) minimap.SetPixel(l.x, maze.h - 1 - l.y, new Color(0.3f, 0.6f, 0.35f));
             foreach (var c in cams) minimap.SetPixel(c.tile.x, maze.h - 1 - c.tile.y, Time.time < c.alertUntil ? Color.red : new Color(1f, 0.6f, 0.2f));
+            if (objectiveTile.HasValue && Time.time % 0.8f < 0.45f)
+            {
+                var ot = objectiveTile.Value; var orn = maze.RoomAt(ot.x, ot.y);
+                if (orn != null) { var rr = maze.rooms[orn]; for (int yy = rr.y; yy < rr.y + rr.h; yy++) for (int xx = rr.x; xx < rr.x + rr.w; xx++) minimap.SetPixel(xx, maze.h - 1 - yy, new Color(1f, 0.85f, 0.2f)); }
+            }
             var pt = player.T; minimap.SetPixel(pt.x, maze.h - 1 - pt.y, new Color(0.4f, 0.8f, 1f));
             if (revealBroker || seenRecently || broker.Threat == "ACTIVE HUNT") { var bt = broker.T; minimap.SetPixel(bt.x, maze.h - 1 - bt.y, Color.red); }
             minimap.Apply();
