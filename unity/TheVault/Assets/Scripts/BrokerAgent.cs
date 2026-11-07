@@ -30,14 +30,16 @@ public class BrokerAgent : MonoBehaviour
     public void Init(VaultGame g)
     {
         game = g; maze = g.maze; mem = g.mem;
-        transform.position = g.World(maze.ZoneCentre("centre"));
+        transform.position = g.World(maze.ZoneCentre("south-east")); // starts far away: no hunting at the start
     }
 
     public Tile T => game.TileOf(transform.position);
 
     float Speed()
     {
-        float b = state switch { "PATROL" => 1.9f, "INVESTIGATE" => 2.4f, "SEARCH" => 2.1f, "CHASE" => 3.5f, "INTERCEPT" => 2.9f, "GUARD" => 1.6f, _ => 2f };
+        // deliberately slower than the player's run (7.2 u/s): its danger is prediction + maze control, not speed
+        float b = state switch { "PATROL" => 1.5f, "INVESTIGATE" => 2.1f, "SEARCH" => 1.8f, "CHASE" => 2.9f, "INTERCEPT" => 2.5f, "GUARD" => 1.4f, _ => 1.8f };
+        if (game.day >= 3) b *= 1.1f;
         return (AlarmOn ? b * 1.2f : b) * VaultGame.TILE;
     }
 
@@ -50,10 +52,10 @@ public class BrokerAgent : MonoBehaviour
     public void SetState(string s, string reason) { state = s; stateReason = reason; }
 
     // ---------- perception ----------
-    public bool CanSee(Tile pt, bool hidden, bool running, bool powerOn)
+    public bool CanSee(Tile pt, bool hidden, bool running, bool powerOn, bool crouched = false)
     {
         if (hidden) return false;
-        var t = T; float range = (powerOn ? 7 : 5) + (running ? 1 : 0);
+        var t = T; float range = (powerOn ? 7 : 5) + (running ? 1 : 0) - (crouched ? 2 : 0);
         float d = Mathf.Sqrt((pt.x - t.x) * (pt.x - t.x) + (pt.y - t.y) * (pt.y - t.y));
         return d <= range && maze.LineOfSight(t.x, t.y, pt.x, pt.y);
     }
@@ -122,7 +124,7 @@ public class BrokerAgent : MonoBehaviour
     public void Tick(float dt, FirstPersonPlayer p, bool powerOn)
     {
         var pt = p.T;
-        bool sees = CanSee(pt, p.hidden, p.running, powerOn);
+        bool sees = CanSee(pt, p.hidden, p.running, powerOn, p.crouched);
         if (sees)
         {
             if (!lastSeenPlayer)
@@ -196,16 +198,22 @@ public class BrokerAgent : MonoBehaviour
         GoTo(targets[Random.Range(0, targets.Count)]);
     }
 
-    public void ResetAfterCapture() { SetState("PATROL", "reset after capture"); path.Clear(); transform.position = game.World(maze.ZoneCentre("centre")); }
+    public void ResetAfterCapture() { SetState("PATROL", "new day: lost track of you"); path.Clear(); transform.position = game.World(maze.ZoneCentre("east")); }
+
+    // escape room breached / alert: go straight there
+    public void Hunt(Tile t, string reason) { SetState("INTERCEPT", reason); guardPoint = t; GoTo(t); }
+
+    public string Threat => state == "CHASE" ? "ACTIVE HUNT" : (state == "PATROL" || state == "GUARD") ? "EXPLORATION" : "INVESTIGATION";
 
     // rule-based fallback strategist (backend offline / slow)
-    public static Decision Fallback(BrokerMemory mem, Dictionary<string, bool> progress, List<string> closable)
+    public static Decision Fallback(BrokerMemory mem, int roomsDone, string activeRoom, string nextRoom, List<string> closable)
     {
-        if (progress["keycard"] && progress["power"]) return D("GUARD_OBJECTIVE", "exit", "player has everything, guarding the exit", "heading to the exit", 0.8f, "You will not leave this place.");
+        if (roomsDone >= 3) return D("GUARD_OBJECTIVE", "central", "all three rooms done, guarding the central exit", "heading for the central exit", 0.8f, "Three rooms. One exit. And I am standing in front of it.");
+        if (activeRoom != null) return D("GUARD_OBJECTIVE", activeRoom, $"player sealed inside the {activeRoom} room", "will leave the room when the puzzle is solved", 0.7f, "Take your time. I will be waiting outside.");
         if (mem.PreferredDoor != null && mem.PreferredDoorUses >= 3 && closable.Contains(mem.PreferredDoor))
             return D("BLOCK_CORRIDOR", mem.PreferredDoor, $"player used {mem.PreferredDoor} {mem.PreferredDoorUses} times", $"will try {mem.PreferredDoor} again", 0.6f, "Your favourite door is closed. Predictable.");
         if (mem.hides >= 2) return D("SEARCH_HIDING_PLACES", mem.FavouriteLocker, "player hides often", "hiding in a locker", 0.55f, "I know you like the lockers.");
-        if (mem.RunRatio > 0.45f) return D("INTERCEPT_ROUTE", progress["fuse"] ? "generator" : "fuse", "fast player rushing objectives", "rushing the next objective", 0.5f, "Running again? I can hear every step.");
+        if (mem.RunRatio > 0.45f && nextRoom != null) return D("INTERCEPT_ROUTE", nextRoom, "fast player rushing the next room", "rushing the next escape room", 0.5f, "Running again? I can hear every step.");
         return D("INVESTIGATE_ZONE", mem.PreferredZone ?? "centre", "checking the player's favourite zone", $"player in {mem.PreferredZone ?? "centre"}", Mathf.Max(0.3f, mem.PreferredZoneShare), "I am watching.");
     }
 

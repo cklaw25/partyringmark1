@@ -7,7 +7,7 @@ public class FirstPersonPlayer : MonoBehaviour
     public CharacterController cc;
     public Camera cam;
     public Light flashlight;
-    public bool hidden, running, moving, seenEnteringLocker;
+    public bool hidden, running, moving, crouched, frozen, seenEnteringLocker;
     public Locker locker;
     public Vector3 hideReturnPos;
     float pitch, yaw;
@@ -38,24 +38,26 @@ public class FirstPersonPlayer : MonoBehaviour
 
     public void Tick(float dt)
     {
-        if (Cursor.lockState == CursorLockMode.Locked)
+        if (Cursor.lockState == CursorLockMode.Locked && !frozen)
         {
             yaw += Input.GetAxisRaw("Mouse X") * mouseSens;
             pitch = Mathf.Clamp(pitch - Input.GetAxisRaw("Mouse Y") * mouseSens, -80, 80);
             transform.rotation = Quaternion.Euler(0, yaw, 0);
             cam.transform.localRotation = Quaternion.Euler(pitch, 0, 0);
         }
-        if (hidden) { moving = running = false; return; }
+        if (hidden || frozen) { moving = running = false; return; }
+        crouched = Input.GetKey(KeyCode.C) || Input.GetKey(KeyCode.LeftControl);
         Vector3 input = new Vector3((Input.GetKey(KeyCode.D) ? 1 : 0) - (Input.GetKey(KeyCode.A) ? 1 : 0), 0,
                                     (Input.GetKey(KeyCode.W) ? 1 : 0) - (Input.GetKey(KeyCode.S) ? 1 : 0));
         moving = input.sqrMagnitude > 0.01f;
-        running = moving && Input.GetKey(KeyCode.LeftShift);
-        Vector3 move = transform.TransformDirection(input.normalized) * (running ? runSpeed : walkSpeed);
+        running = moving && !crouched && Input.GetKey(KeyCode.LeftShift);
+        Vector3 move = transform.TransformDirection(input.normalized) * (crouched ? 2.2f : running ? runSpeed : walkSpeed);
         move.y = -9f;
         cc.Move(move * dt);
         // head bob
         float bob = moving ? Mathf.Sin(Time.time * (running ? 14 : 9)) * (running ? 0.06f : 0.03f) : 0;
-        cam.transform.localPosition = new Vector3(0, 0.65f + bob, 0);
+        float eye = Mathf.Lerp(cam.transform.localPosition.y - bob, crouched ? -0.25f : 0.65f, 12f * dt);
+        cam.transform.localPosition = new Vector3(0, eye + bob, 0);
     }
 
     // dominant grid direction the player is facing (for throwing)

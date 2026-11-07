@@ -4,6 +4,11 @@ WHACK 26, incident.io track: *"Build an agent that reacts to a live feed as it h
 
 THE BROKER is a reactive AI agent that runs a horror maze. It watches the live event stream of your play (running, hiding, doors, thrown bottles), builds a behavioural memory, predicts your next move and rewires the maze against you. You can trick it, and it learns from being tricked.
 
+## Two builds
+- **`unity/TheVault/` - the main game (Unity 3D, first-person).** Open in Unity 2022.3, press Play: the whole world is built from code.
+  3 escape rooms with a 3-lock mechanic, sweeping security cameras (THE BROKER can't see everywhere), 3 days, central exit, crouch/hide/throw.
+- **`frontend/` - 2D browser prototype (idea showcase).** The first version of the concept in Phaser, for quickly showing judges the AI loop.
+
 ## Architecture: fast path + slow path
 - **Fast path (browser, every frame, ~0.1-1 ms):** movement, A* chase, line-of-sight vision, hearing, deception learning (trust in noises), BFS fairness checks. No AI on this path, so reactions are instant.
 - **Slow path (Python + Claude, every ~5 s or on big events):** reads a compact state + profile, calls one strict tool `broker_decide` (BLOCK_CORRIDOR, INTERCEPT_ROUTE, SEARCH_HIDING_PLACES, ...) with a reason, prediction, confidence and a spoken line.
@@ -19,9 +24,11 @@ pip install -r requirements.txt
 cp .env.example .env     # then put your key in .env
 python -m uvicorn main:app --port 8000
 
-# frontend (second terminal)
+# 3D game: open unity/TheVault in Unity Hub (2022.3.62f1) and press Play
+# 2D prototype (second terminal)
 cd frontend
 npm install
 npm run dev              # open http://localhost:5173  (?seed=42 for another maze, ?mode=full for 30 min)
 ```
-Controls: WASD move · SHIFT run (loud) · E interact/hide · SPACE throw bottle · V toggle fog · M simulate a mic shout
+3D controls: WASD + mouse · SHIFT run (loud) · C crouch (under cameras) · E interact / hide / terminal · SPACE throw bottle · TAB agent panel · V show hunter on minimap
+2D controls: WASD move · SHIFT run (loud) · E interact/hide · SPACE throw bottle · V toggle fog · M simulate a mic shout

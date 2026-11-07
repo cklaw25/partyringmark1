@@ -3,7 +3,8 @@
 using System;
 using System.Collections.Generic;
 
-public class Door { public string id; public int x, y; public bool closed; public string kind; public string zone; }
+public class Door { public string id; public int x, y; public bool closed; public string kind; public string zone; public string room; }
+// kinds: "door" (BROKER can seal), "shutter" (BROKER can open), "gate" (escape-room lockdown, engine only), "blast" (central exit, engine only)
 public class Locker { public string id; public int x, y; public string zone; }
 public class Item { public string type; public int x, y; }
 public class Room { public string name; public int x, y, w, h, cx, cy; }
@@ -35,7 +36,9 @@ public class VaultMaze
     public List<Locker> lockers = new List<Locker>();
     public Dictionary<string, Room> rooms = new Dictionary<string, Room>();
     public List<Item> items = new List<Item>();
-    public Tile start, generatorPos, exitPos;
+    public Tile start, exitPos;
+    public List<Tile> cameraSpots = new List<Tile>();
+    public static readonly string[] PUZZLE_ROOMS = { "power", "surveillance", "emergency" };
     Mulberry32 rng;
 
     static readonly string[,] ZONES = {
@@ -110,11 +113,11 @@ public class VaultMaze
             if ((hz || vt) && rng.Next() < 0.16) grid[y, x] = 0;
         }
         // 3) rooms
-        AddRoom("start", 0, 0, 2, 2);
-        AddRoom("storage", cw - 3, 0, 3, 2);
-        AddRoom("generator", 0, ch - 2, 3, 2);
-        AddRoom("security", cw / 2 - 1, ch / 2 - 1, 2, 2);
-        AddRoom("exit", cw - 2, ch - 2, 2, 2);
+        AddRoom("containment", 0, 0, 2, 2);
+        AddRoom("power", cw - 3, 0, 3, 2);
+        AddRoom("surveillance", 0, ch - 2, 3, 2);
+        AddRoom("central", cw / 2 - 1, ch / 2 - 1, 2, 2);
+        AddRoom("emergency", cw - 2, ch - 2, 2, 2);
         // 4) doors on passages
         var cands = new List<Tile>();
         for (int y = 1; y < h - 1; y++) for (int x = 1; x < w - 1; x++)
@@ -146,13 +149,27 @@ public class VaultMaze
         {
             if (ns >= 8) break;
             if (doors.Exists(d => Math.Abs(d.x - s.x) + Math.Abs(d.y - s.y) < 4)) continue;
+            if (InRoomPadded(s.x, s.y)) continue; // never bypass an escape-room lockdown
             grid[s.y, s.x] = 0; AddDoor(s.x, s.y, "shutter", true); ns++;
+        }
+        // 5b) room gates: every opening into a puzzle room becomes a lockdown gate; the central room gets blast doors
+        foreach (var rn in new[] { "power", "surveillance", "emergency", "central" })
+        {
+            var rm = rooms[rn]; int gi = 0;
+            for (int yy = rm.y - 1; yy <= rm.y + rm.h; yy++) for (int xx = rm.x - 1; xx <= rm.x + rm.w; xx++)
+            {
+                bool inside = xx >= rm.x && xx < rm.x + rm.w && yy >= rm.y && yy < rm.y + rm.h;
+                bool corner = (xx == rm.x - 1 || xx == rm.x + rm.w) && (yy == rm.y - 1 || yy == rm.y + rm.h);
+                if (inside || corner || !InBounds(xx, yy) || grid[yy, xx] != 0 || doorAt.ContainsKey(Key(xx, yy))) continue;
+                var g = new Door { id = $"{(rn == "central" ? "blast" : "gate")}_{rn}_{++gi}", x = xx, y = yy, kind = rn == "central" ? "blast" : "gate", closed = rn == "central", zone = ZoneOf(xx, yy), room = rn };
+                doors.Add(g); doorAt[Key(xx, yy)] = g;
+            }
         }
         // 6) lockers
         var spots = new List<Tile>();
         foreach (var kv in rooms)
         {
-            if (kv.Key == "start" || kv.Key == "exit") continue;
+            if (kv.Key == "containment" || kv.Key == "central") continue;
             var rm = kv.Value;
             spots.Add(new Tile(rm.x, rm.y)); spots.Add(new Tile(rm.x + rm.w - 1, rm.y + rm.h - 1));
         }
@@ -165,16 +182,23 @@ public class VaultMaze
         }
         for (int i = 0; i < spots.Count; i++) lockers.Add(new Locker { id = "locker_" + (i + 1), x = spots[i].x, y = spots[i].y, zone = ZoneOf(spots[i].x, spots[i].y) });
         // 7) items
-        start = new Tile(rooms["start"].cx, rooms["start"].cy);
-        items.Add(new Item { type = "fuse", x = rooms["storage"].cx, y = rooms["storage"].cy });
-        items.Add(new Item { type = "keycard", x = rooms["security"].cx, y = rooms["security"].cy });
-        generatorPos = new Tile(rooms["generator"].cx, rooms["generator"].cy);
-        exitPos = new Tile(rooms["exit"].cx, rooms["exit"].cy);
+        start = new Tile(rooms["containment"].cx, rooms["containment"].cy);
+        exitPos = new Tile(rooms["central"].cx, rooms["central"].cy);
         var floor = new List<Tile>();
         for (int y = 1; y < h - 1; y++) for (int x = 1; x < w - 1; x++)
             if (grid[y, x] == 0 && !doorAt.ContainsKey(Key(x, y)) && x % 2 == 1 && y % 2 == 1 && RoomAt(x, y) == null) floor.Add(new Tile(x, y));
         Shuffle(floor);
         for (int i = 0; i < Math.Min(6, floor.Count); i++) items.Add(new Item { type = "bottle", x = floor[i].x, y = floor[i].y });
+        // camera spots: straight corridor cells, spread out
+        var straight = floor.FindAll(t => (Walkable(t.x - 1, t.y) && Walkable(t.x + 1, t.y) && !Walkable(t.x, t.y - 1) && !Walkable(t.x, t.y + 1)) ||
+                                          (Walkable(t.x, t.y - 1) && Walkable(t.x, t.y + 1) && !Walkable(t.x - 1, t.y) && !Walkable(t.x + 1, t.y)));
+        foreach (var t in straight)
+        {
+            if (cameraSpots.Count >= 10) break;
+            if (Math.Abs(t.x - start.x) + Math.Abs(t.y - start.y) < 6) continue;
+            if (cameraSpots.Exists(c => Math.Abs(c.x - t.x) + Math.Abs(c.y - t.y) < 6)) continue;
+            cameraSpots.Add(t);
+        }
     }
 
     void AddRoom(string name, int cx, int cy, int cww, int chh)
@@ -212,7 +236,8 @@ public class VaultMaze
         return true;
     }
 
-    public HashSet<int> Reachable(int sx, int sy, string extraClosed = null)
+    // engineDoorsOpen: treat escape-room gates / blast doors as open (they open by game rules, the BROKER can't hold them shut)
+    public HashSet<int> Reachable(int sx, int sy, string extraClosed = null, bool engineDoorsOpen = false)
     {
         var seen = new HashSet<int> { Key(sx, sy) }; var q = new Queue<Tile>(); q.Enqueue(new Tile(sx, sy));
         while (q.Count > 0)
@@ -221,7 +246,9 @@ public class VaultMaze
             for (int d = 0; d < 4; d++)
             {
                 int nx = c.x + DIRS[d, 0], ny = c.y + DIRS[d, 1];
-                if (!seen.Contains(Key(nx, ny)) && Walkable(nx, ny, extraClosed)) { seen.Add(Key(nx, ny)); q.Enqueue(new Tile(nx, ny)); }
+                bool ok = Walkable(nx, ny, extraClosed);
+                if (!ok && engineDoorsOpen && InBounds(nx, ny) && doorAt.TryGetValue(Key(nx, ny), out var ed) && (ed.kind == "gate" || ed.kind == "blast") && ed.id != extraClosed) ok = true;
+                if (!seen.Contains(Key(nx, ny)) && ok) { seen.Add(Key(nx, ny)); q.Enqueue(new Tile(nx, ny)); }
             }
         }
         return seen;
@@ -231,8 +258,8 @@ public class VaultMaze
     public bool CanClose(string doorId, Tile player, List<Tile> targets)
     {
         var d = FindDoor(doorId);
-        if (d == null || d.closed || (d.x == player.x && d.y == player.y)) return false;
-        var reach = Reachable(player.x, player.y, doorId);
+        if (d == null || d.closed || d.kind != "door" || (d.x == player.x && d.y == player.y)) return false;
+        var reach = Reachable(player.x, player.y, doorId, true);
         foreach (var t in targets) if (!reach.Contains(Key(t.x, t.y))) return false;
         return true;
     }
