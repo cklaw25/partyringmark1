@@ -6,6 +6,7 @@ Key:  put ANTHROPIC_API_KEY=... in backend/.env  (never commit it)
 """
 import json
 import os
+import subprocess
 import time
 from pathlib import Path
 
@@ -74,6 +75,61 @@ async def call_claude(state: dict, history: list) -> dict:
                 raise ValueError(f"bad action {dec.get('action')}")
             return dec
     raise ValueError("no tool call in response")
+
+
+# ---------- HTTP API used by the Unity build ----------
+UNITY_HISTORY: list = []
+
+
+@app.post("/decide")
+async def decide(body: dict):
+    state = body.get("state", {})
+    t0 = time.perf_counter()
+    try:
+        dec = await call_claude(state, UNITY_HISTORY)
+        UNITY_HISTORY.append({k: dec.get(k) for k in ("action", "target", "reason", "prediction")}
+                             | {"outcome": (state.get("last_decision") or {}).get("outcome")})
+        del UNITY_HISTORY[:-10]
+        return {"ok": True, "decision": dec, "model": MODEL, "server_ms": round((time.perf_counter() - t0) * 1000)}
+    except Exception as e:  # noqa: BLE001
+        print("strategist error:", type(e).__name__, e)
+        return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+
+
+# Voice: one persistent Windows speech process (low latency). Swap for ElevenLabs later.
+_tts = None
+
+
+def _tts_proc():
+    global _tts
+    if _tts is None or _tts.poll() is not None:
+        script = (
+            "Add-Type -AssemblyName System.Speech;"
+            "$s = New-Object System.Speech.Synthesis.SpeechSynthesizer;"
+            "$v = $s.GetInstalledVoices() | Where-Object { $_.VoiceInfo.Culture.Name -like 'en-GB*' } | Select-Object -First 1;"
+            "if ($v) { $s.SelectVoice($v.VoiceInfo.Name) };"
+            "$s.Rate = -1;"
+            "while ($true) { $line = [Console]::In.ReadLine(); if ($line -eq $null) { break };"
+            " if ($line.StartsWith('!')) { $s.SpeakAsyncCancelAll(); $line = $line.Substring(1) }"
+            " elseif ($s.State -eq 'Speaking') { continue };"
+            " [void]$s.SpeakAsync($line) }"
+        )
+        _tts = subprocess.Popen(["powershell", "-NoProfile", "-Command", script], stdin=subprocess.PIPE, text=True)
+    return _tts
+
+
+@app.post("/say")
+async def say(body: dict):
+    text = str(body.get("text", "")).replace("\n", " ")[:200]
+    if not text:
+        return {"ok": False}
+    try:
+        p = _tts_proc()
+        p.stdin.write(("!" if body.get("interrupt") else "") + text + "\n")
+        p.stdin.flush()
+        return {"ok": True}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e)}
 
 
 @app.websocket("/ws")

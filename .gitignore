@@ -5,3 +5,12 @@ __pycache__/
 *.pyc
 .venv/
 .DS_Store
+# Unity
+unity/TheVault/[Ll]ibrary/
+unity/TheVault/[Tt]emp/
+unity/TheVault/[Oo]bj/
+unity/TheVault/[Bb]uild/
+unity/TheVault/[Ll]ogs/
+unity/TheVault/[Uu]ser[Ss]ettings/
+unity/TheVault/*.csproj
+unity/TheVault/*.sln
