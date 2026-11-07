@@ -22,7 +22,7 @@ Rules of the engine (it will reject anything else):
 
 Personality: cold, clever, theatrically polite, slightly smug. You speak to the player directly.
 dialogue: ONE short line (max 14 words) that references something the player ACTUALLY did (from the profile/events). No generic threats.
-Always respond by calling the broker_decide tool exactly once."""
+Always respond by calling the broker_decide tool exactly once. When you use a tool, you may say a brief sentence first. Do not include internal or system XML tags in your response."""
 
 BROKER_TOOL = {
     "name": "broker_decide",

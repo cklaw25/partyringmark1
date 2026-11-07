@@ -28,6 +28,7 @@ def load_env():
 load_env()
 MODEL = os.environ.get("BROKER_MODEL", "claude-opus-5-5")
 EFFORT = os.environ.get("BROKER_EFFORT", "low")
+THINKING_OFF = os.environ.get("BROKER_THINKING", "on").lower() == "off"
 client = anthropic.AsyncAnthropic()
 app = FastAPI()
 USE_FALLBACKS = True  # server-side refusal fallback; switched off automatically if the SDK/API rejects it
@@ -53,7 +54,9 @@ async def call_claude(state: dict, history: list) -> dict:
         messages=[{"role": "user", "content": user_msg}],
         extra_body={"output_config": {"effort": EFFORT}},
     )
-    if USE_FALLBACKS:
+    if THINKING_OFF:
+        kwargs["extra_body"]["thinking"] = {"type": "disabled"}  # allowed on Haiku 5.5 at effort high or below
+    if USE_FALLBACKS and "haiku" not in MODEL:  # Haiku has no server-side refusal fallback
         try:
             resp = await client.beta.messages.create(
                 betas=["server-side-fallback-2026-07-01"],

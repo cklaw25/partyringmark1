@@ -28,6 +28,8 @@ public class VaultGame : MonoBehaviour
     readonly Dictionary<string, GameObject> doorGo = new Dictionary<string, GameObject>();
     readonly Dictionary<Item, GameObject> itemGo = new Dictionary<Item, GameObject>();
     readonly List<Light> roomLights = new List<Light>();
+    readonly List<Transform> signs = new List<Transform>();
+    string seedText = "1337";
     GameObject generatorGo; Renderer generatorR;
     Texture2D minimap; float minimapTimer;
     Vector2 pmScroll;
@@ -48,7 +50,7 @@ public class VaultGame : MonoBehaviour
     // ---------- setup ----------
     void Start()
     {
-        maze = new VaultMaze(seed); mem = new BrokerMemory();
+        maze = new VaultMaze(seed); mem = new BrokerMemory(); seedText = seed.ToString();
         client = gameObject.AddComponent<StrategistClient>();
         RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
         RenderSettings.ambientLight = new Color(0.025f, 0.025f, 0.035f);
@@ -105,6 +107,12 @@ public class VaultGame : MonoBehaviour
         // room lights: dim red emergency light until power returns
         foreach (var rm in maze.rooms.Values)
         {
+            var sign = new GameObject("Sign_" + rm.name); sign.transform.SetParent(transform);
+            sign.transform.position = World(new Tile(rm.cx, rm.cy)) + Vector3.up * (WALL_H - 0.55f);
+            var tm = sign.AddComponent<TextMesh>(); tm.text = rm.name.ToUpper(); tm.fontSize = 64; tm.characterSize = 0.05f;
+            tm.anchor = TextAnchor.MiddleCenter; tm.color = new Color(0.9f, 0.35f, 0.3f);
+            tm.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); sign.GetComponent<MeshRenderer>().sharedMaterial = tm.font.material;
+            signs.Add(sign.transform);
             var lg = new GameObject("RoomLight_" + rm.name); lg.transform.SetParent(transform);
             lg.transform.position = World(new Tile(rm.cx, rm.cy)) + Vector3.up * (WALL_H - 0.3f);
             var li = lg.AddComponent<Light>(); li.type = LightType.Point; li.range = 9; li.intensity = 0.7f; li.color = new Color(0.8f, 0.1f, 0.1f);
@@ -214,7 +222,7 @@ public class VaultGame : MonoBehaviour
     {
         if (over || !started || client.busy) return;
         lastStrategy = elapsed;
-        client.Decide(BuildStateJson(trigger), 5f, dec =>
+        client.Decide(BuildStateJson(trigger), 8f, dec =>
         {
             if (dec == null) dec = BrokerAgent.Fallback(mem, progress, ClosableDoors());
             ApplyDecision(dec);
@@ -407,6 +415,7 @@ public class VaultGame : MonoBehaviour
             var col = g.GetComponent<Collider>(); col.enabled = d.closed || p.y > 0.5f;
         }
         foreach (var g in itemGo.Values) g.transform.Rotate(0, 90 * dt, 0);
+        foreach (var s in signs) s.rotation = Quaternion.LookRotation(s.position - player.cam.transform.position);
         RenderSettings.fogColor = broker.AlarmOn ? new Color(0.25f * (0.5f + 0.5f * Mathf.Sin(Time.time * 8)), 0, 0) : Color.black;
         player.flashlight.intensity = (progress["power"] ? 2.2f : 1.8f) * (Random.value < 0.01f ? 0.2f : 1f);
 
@@ -447,7 +456,7 @@ public class VaultGame : MonoBehaviour
 
     void StartScreen()
     {
-        float w = 700, h = 380, x = (Screen.width - w) / 2, y = (Screen.height - h) / 2;
+        float w = 760, h = 460, x = (Screen.width - w) / 2, y = (Screen.height - h) / 2;
         GUI.color = new Color(0, 0, 0, 0.9f); GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture); GUI.color = Color.white;
         GUILayout.BeginArea(new Rect(x, y, w, h));
         GUILayout.Label("<b>THE VAULT: OUTBREAK</b>", S(34, RED));
@@ -458,6 +467,15 @@ public class VaultGame : MonoBehaviour
         GUILayout.Label("You can trick it. Throw bottles. Fake a favourite route. But it learns.", S(15, Color.white));
         GUILayout.Space(8);
         GUILayout.Label($"Strategist link: {(client != null && client.online ? "<color=#6bd68a>online (Claude)</color>" : "<color=#ff6b6b>offline: fallback rules</color>")}", S(14, DIM));
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("Maze seed (same seed = same maze, for the two-players demo):", S(14, DIM), GUILayout.Width(430));
+        seedText = GUILayout.TextField(seedText, GUILayout.Width(90));
+        if (GUILayout.Button("Load", GUILayout.Width(60)) && uint.TryParse(seedText, out var ns) && ns != seed)
+        {
+            var go = new GameObject("VAULT"); go.AddComponent<VaultGame>().seed = ns; Destroy(gameObject);
+        }
+        demoMode = GUILayout.Toggle(demoMode, demoMode ? " Demo (5 min)" : " Full (30 min)");
+        GUILayout.EndHorizontal();
         GUILayout.Space(10);
         if (GUILayout.Button("ENTER THE VAULT", GUILayout.Height(44)))
         {
