@@ -1,0 +1,682 @@
+WHACK 26 - day 1 discussion notes (7 Nov 2026), verbatim chat export
+
+
+USER:
+open convo for warwick hackathon brainstorm
+------------------------------------------------------------
+CLAUDE:
+Here's the summary you saved on 6 Nov, word for word as you asked:
+
+---
+
+The intel pack is saved at `C:\Users\lawch\OneDrive\文件\programming\WHACK MARK 1\WHACK26_intel.md`. **WHACK 26 is tomorrow:** arrivals are 09:00–09:45 at the Oculus Building in Warwick. From London that means about 1h on the train from Euston to Coventry, then about 20 min to campus, so leave by about 07:30.
+
+## How judging works
+Each gold sponsor sets a problem statement, revealed at the opening. Your team picks **one**, submits on Devpost with plenty of images, and then gives a **5-minute live pitch to that sponsor**. A video isn't required; the live demo is what gets judged. Submissions close **11:00 Sunday**. Sponsor reps judge their own tracks. The WHACK lead organisers are also listed as judges, and they're probably the ones deciding the side prizes. No individual judges are named anywhere public.
+
+## Sponsors and what they're likely to ask for
+The gold sponsors are Capital One, Brevan Howard, Marshall Wace and incident.io. Bloomberg and Netcraft are silver.
+
+| Sponsor | What they've set before | What won |
+|---|---|---|
+| **Capital One** | **Financial literacy / credit in 3 hackathons in a row** (WHACK 24, WHACK 25, HackNotts 25) | A virtual-pet savings game (2024). Snackonomics (2025): photograph a meal, get a cheaper swap, and the money saved goes to a credit goal. Generic quiz apps and dashboards all lost. |
+| **Brevan Howard** | 2025 exact wording: *"Create something that helps understand information accuracy: social posts, headlines, economic predictions, AI responses"* | A dashboard that compared answers from several AI models and flagged where they disagree, plus fact-vs-opinion analysis |
+| **Marshall Wace** (new here) | **Always a vague one-phrase theme:** "Chain of events" (DurHack 24), "Bridging Worlds" (DurHack 25), "Emergent Behaviour" (IC Hack 26) | An ESP32 + servo machine that passes data through a chain of absurd steps (Gmail → Morse code → Discord → QR codes), a crystal-ball predictor, and an AI simulation of a crowd at an event. Weird, fun and technically genuine wins. |
+| **incident.io** | 2025 prompt was roughly "keep up with information that's constantly changing" (exact text not found) | **CharacterCompass**, an AI tool for novelists. The obvious engineering-tool entry lost the track. A creative reading of the prompt beats a literal one. |
+
+- **Bloomberg:** probably mainly there for careers (big London engineering office).
+- **Netcraft:** a phishing / cybercrime company, probably tied to the 21:00 capture-the-flag (CTF) event.
+
+## Judges and organisers
+The lead organisers lean towards quant and trading:
+- **Edward O'Dwyer:** chess engines, an order book built in 90 minutes.
+- **Jakub Kisielewski:** low-latency finance, works at BGC Group, and **was at OxHack26 like you**.
+- **Sam Turner:** at Google.
+- **Louis Tanak** (co-founder): won the HRT track at IC Hack 26.
+
+## All past winners
+The file has every winner from 2024 and 2025 with its Devpost link, prize and tech stack.
+- 2025 gallery: whack-2025.devpost.com/project-gallery
+- 2024 gallery: ccfc-c1-fai-whack.devpost.com/project-gallery
+
+## Ways to win
+1. **A gold track:** about £1k plus 4 gadgets.
+2. **Most Creative / WHACKiest (£600 each):** your track project can win these too. Last year's Most Creative was an AR Monopoly game on a 3D-printed board.
+3. **1 Hour Hackathon at 22:30:** a free extra shot. One teammate can do it while the rest keep building.
+4. **Best Costume:** just dress up. In 2024 the best-dressed team also won a track.
+
+## Tips
+- **Bring hardware** (ESP32, servos, sensors). Almost nobody does, and it has won both Marshall Wace and Most Creative before.
+- **Capital One angle nobody has used:** credit-building for people new to the UK credit system. That's who Capital One UK actually serves (people with little or no credit history), and it's your own story as an international student.
+- **Video:** use Suli's tool or Higgsfield to make a 20–30 second clip for Devpost and as a backup if the live demo breaks. Spend 30 minutes on it at most, on Sunday morning.
+- **Careers:** the sponsor talks run 13:00–16:00 and speed networking is at 17:00. The people you meet there are probably your judges. Bring your quant CV. The file has questions to ask each sponsor.
+
+When you're ready, send me your team size and skills and we'll start on ideas.
+
+Sources: [warwickhack.co.uk](https://warwickhack.co.uk/), [WHACK 2025 Devpost](https://whack-2025.devpost.com/), [WHACK 2024 Devpost](https://ccfc-c1-fai-whack.devpost.com/), [WHACK 2025 site](https://whack-site-8j0.pages.dev), [DurHack 2024](https://durhack-2024.devpost.com/), [DurHack 2025](https://durhack-2025.devpost.com/), [IC Hack 26](https://ic-hack-26.devpost.com/), [HackNotts 25](https://hacknotts-25.devpost.com/), [ClearReality (BH prompt)](https://devpost.com/software/clearreality), [incident.io AI SRE](https://incident.io/blog/introducing-ai-sre), [Marshall Wace student events](https://mwam.com/student-events), [Fetch.ai WHACK 2024](https://fetch.ai/events/whack-2024)
+
+---
+
+It's event day, so we can start on ideas now. To make the brainstorm fit the real tracks, send me:
+
+1. **The four problem statements** word for word, if the opening has already revealed them. A photo of the slide works too.
+2. **Your team:** how many people and what each person is good at (frontend, backend, ML, hardware, design, pitching).
+3. **Any hardware you brought**, like an ESP32, servos or sensors.
+
+If the statements haven't been revealed yet, I can draft one or two backup ideas per sponsor now, based on last year's patterns. Then we'd adjust them once the real prompts are out.
+------------------------------------------------------------
+USER:
+can u give me details on which each company does and also the judges their background in detail
+------------------------------------------------------------
+CLAUDE:
+Here's a breakdown of each company and each judge, with what it means for your pitch.
+
+# The companies
+
+## Capital One (gold)
+- **What it is:** a big US bank and card issuer that sees itself as a tech company. It bought Discover in May 2025, so it now owns a card payment network too.
+- **UK side:** Capital One Europe is based in **Nottingham** and also has a London office. Its main UK product is **credit-builder cards** for people with a thin or patchy credit file. Interest on these is high, typically 30–50% APR. People with **no UK credit history at all are often turned down**, which is a real gap for international students and new arrivals.
+- **Hiring:** Technology Graduate programme and Summer Internship. The Nottingham tech internship advert was up in Aug 2026.
+- **What they care about:** responsible lending, "vulnerable customers", financial literacy, and getting people from no credit to good credit.
+- **For your pitch:** name the credit-builder card and the thin-file problem. Your own story as an international student starting from zero UK credit fits it exactly.
+
+## Brevan Howard (gold)
+- **What it is:** a **global macro hedge fund**, roughly $33–34bn AUM by recent estimates (figures vary). Macro means betting on interest rates, FX, bonds and central bank decisions. Founded by Alan Howard, who stepped back in 2019. Aron Landy, the former chief risk officer, now runs it. Recent growth has been heavy in the Middle East (Abu Dhabi).
+- **BH Digital:** its crypto arm, launched Sept 2021. It has about 50+ staff, a roughly $1bn+ multi-strategy crypto fund, and venture stakes in blockchain startups.
+- **Recent news:** 2025 performance lagged, and it's closing the $1.4bn FG Fund by mid-2026.
+- **Hiring:** AI & Quant, Systematic Trading, Systematic Data Engineering, Macro Trading, Risk, VC.
+- **What they care about:** decisions under uncertainty, and whether a piece of information (a headline, a forecast, a model output) can be trusted. Last year's prompt was literally "information accuracy".
+- **For your pitch:** frame it as a trader's problem: "which signal do I believe before I put money on it?"
+
+## Marshall Wace (gold, new to WHACK)
+- **What it is:** a London **equity long/short** hedge fund, about $80bn+ AUM (sources range $65–85bn), founded 1997 by Paul Marshall and Ian Wace. "Long/short" means it buys stocks it expects to rise and short-sells ones it expects to fall.
+- **Its two engines:**
+  - **TOPS (2002)** was the world's first "alpha capture" system. Hundreds of broker analysts submit trade ideas, and the system scores each contributor's track record and turns the ideas into trades. It's essentially **crowdsourced signals with machine-learned trust scores**.
+  - **Eureka** is the human, fundamental side: sector specialists doing bottom-up research.
+  - Their motto is **"man plus machine beats a machine"**.
+- **Hiring:** Technology Internship and an 18–24 month Technology Graduate Programme. Their hackathon sponsorship focus is "algorithmic trading or computing".
+- **What they care about:** at hackathons, always an abstract theme ("Chain of events", "Bridging Worlds", "Emergent Behaviour"). Weird, fun, technically real projects win, including hardware.
+- **For your pitch:** crowds, emergent signals and human + AI collaboration map straight onto TOPS. Mention it by name.
+
+## incident.io (gold)
+- **What it is:** a London startup, founded by ex-**Monzo** engineers (Stephen Whitworth, Chris Evans, Pete Hamilton). When a company's systems go down at 3am, incident.io handles the on-call paging, the Slack war-room, status pages and the post-mortem.
+- **Money:** $62m Series B in Apr 2025, led by Insight Partners, at about a $400m valuation. Total raised is about $96m.
+- **Customers:** Netflix, Linear, Ramp, Etsy and reportedly OpenAI. Main rival is **PagerDuty**.
+- **Flagship product:** "AI SRE" / **Investigations**, powered by an engine called **Nexus**. It models your systems, teams and incident history, then reads telemetry, deploys and code to work out why something broke.
+- **Culture:** product engineering and polish. They care about the experience, not just whether it works.
+- **For your pitch:** last year they rewarded a *creative off-domain* reading (a tool for novelists). The general idea is "making sense of fast-changing information under pressure".
+
+## Bloomberg (silver)
+- **What it is:** the **Bloomberg Terminal** (about $30k/year per seat, used by every trader), plus Bloomberg News and data feeds. The London office (Bloomberg Arcade, City) is one of its biggest engineering hubs.
+- **Hiring:** SWE internship and grad roles. Strong puzzle culture.
+- **For you:** mainly a careers contact. Probably no title track.
+
+## Netcraft (silver)
+- **What it is:** a Bath-based cybercrime-disruption company. It finds phishing sites, fake shops and malware and gets them **taken down**. It also runs the long-standing web server survey. Banks and governments are customers.
+- **For you:** likely linked to the **21:00 IRL CTF** (a capture-the-flag hacking challenge). It's a careers contact if security interests you.
+
+# The judges
+
+Track judges are **sponsor reps, and none are named publicly**. They'll most likely be the people giving the 13:00–16:00 talks and at the 17:00 speed networking, so get their names there. Side prizes (Most Creative, WHACKiest) are probably judged by the lead organisers:
+
+### Sam Turner: Lead Organiser, **President of Warwick AI**
+- Warwick CS undergrad. **Google Software Engineering (Site Reliability) intern, summer 2026.**
+- Contributes to **PufferLib**, a reinforcement learning library with about 6.6k stars. He also built an **RL drone controller and simulator in C** (42 stars) and an experiment tracker in **Rust**.
+- Side projects: a zero-knowledge password manager, ML weather prediction from Met Office data, a **Raspberry Pi weather station** logging sensor data.
+- **What he likes:** systems-level code, RL, real sensors and hardware. **He's an SRE, which is exactly incident.io's world**, so he'll notice whether an incident.io entry gets SRE right. Your UltrasoundMark1 RL work is something to talk about with him.
+
+### Edward O'Dwyer: Lead Organiser
+- Warwick CS, London-based. Interested in **low-latency systems, concurrency, backend architecture**. Writes C++, Python, Java and Haskell.
+- Built a **chess engine framework**, an **order book + matching engine in 90 minutes (Java)**, a **crowd-flow simulator**, a Haskell interpreter for an esoteric language (A=B), and competed in **IC Algothon 2024** (algo trading).
+- **What he likes:** clever, fast engineering, trading mechanics, simulations, and playful "because I can" projects (the esoteric-language interpreter). A crowd or agent sim would appeal to him.
+
+### Jakub Kisielewski: Lead Organiser
+- Warwick CS, graduating 2027. **BGC Group SWE intern, summer 2026.** BGC is an inter-dealer broker, a trading-infrastructure firm.
+- Bio: "building knowledge in **low-latency engineering and finance**". He specifically lists interest in **"using hardware to solve problems"**.
+- Exec on **Warwick AI** and **Warwick Computing Society**. Built an order-matching system, a text editor in C, and an airport simulator (coursework), and collaborated on Edward's crowd-flow sim.
+- Earlier research found he hacked at **OxHack26 like you**, so that's an easy opener.
+- **What he likes:** finance + systems, and **hardware**. He's the judge most likely to reward an ESP32 build.
+
+### Louis Tanak: Co-founder (WHACK) / advisor
+- Founded the hackathon. Yesterday's research said he won the HRT track at IC Hack 26 and works on lock-free data structures and matching engines, but **I couldn't re-confirm that today**, so treat it as unverified.
+
+### Joshua Fitzmaurice: Advisor
+- No public details found.
+
+## What the judges have in common
+All three lead organisers are **Warwick CS students with quant/low-latency internships** (Google SRE, BGC). They've all built **matching engines or simulations**, and two of them have hardware or sensor projects. They'll respect a project that is **technically real underneath and fun on the surface**. A dressed-up ChatGPT wrapper won't impress them.
+
+Want me to save these notes into `WHACK26_intel.md`? Otherwise, send the problem statements once they're revealed and we'll start on ideas.
+
+Sources: [warwickhack.co.uk](https://warwickhack.co.uk/), [Edward O'Dwyer GitHub](https://github.com/edwardodp), [Jakub Kisielewski GitHub](https://github.com/Jakub-Kisielewski), [Sam Turner GitHub](https://github.com/stmio), [WHACK 2025 site](https://whack-site-8j0.pages.dev), [NBIM podcast: Paul Marshall on TOPS](https://www.nbim.no/en/news-and-insights/podcast/2026/sir-paul-marshall-why-markets-are-getting-more-competitive-the-logic-of-shorting-and-building-tops/), [Caplight MW profile](https://www.caplight.com/investor/mwam), [Fintool MW](https://fintool.com/app/research/funds/hedge-funds/marshall-wace-llp), [Brevan Howard Wikipedia](https://www.Wikipedia.org/wiki/Brevan_Howard), [Blockworks BH Digital](https://blockworks.co/news/sources-brevan-howard-launches-first-digital-assets-fund-in-massive-crypto-push), [Fintool BH](https://fintool.com/app/research/funds/hedge-funds/brevan-howard-capital-management-lp), [TechCrunch incident.io $62m](https://techcrunch.com/2025/04/10/incident-io-raises-62m-at-a-400m-valuation-to-help-it-teams-move-fast-when-things-break), [Insight Partners incident.io](https://www.insightpartners.com/ideas/incident-io-raises-62m-to-build-ai-agents-that-resolve-incidents-with-you/), [incident.io AI SRE](https://incident.io/blog/introducing-ai-sre), [City AM Capital One](https://www.cityam.com/people-and-organizations/capital-one), [FF News Capital One–Discover](https://ffnews.com/newsarticle/fintech/capital-one-completes-acquisition-of-discover/)
+------------------------------------------------------------
+USER:
+sure save it, what is meant by technically real underneath, what is meant by low latency
+------------------------------------------------------------
+CLAUDE:
+I saved the profiles as a new **section 8** at the end of `WHACK26_intel.md`.
+
+---
+
+## "Technically real underneath"
+
+**Analogy:** a film set versus a real house. From the front, both look like a house. Open the door of the film-set one and there's nothing behind it. Judges who code will try the door.
+
+**Fake (a "wrapper"):** the app sends your text to ChatGPT and shows whatever comes back. Nice UI, but **the only "work" is someone else's AI**. If a judge asks "what did *you* build?", the honest answer is "a text box".
+
+**Real:** something you built actually does the work, and the AI, if there is any, is one part of it. Examples:
+- Pipeline of Peril (Marshall Wace winner): the servo *physically* tapped out Morse code and a camera *read* QR codes. Silly idea, but every step genuinely worked.
+- Your own projects: the cup-fill detection in WaterMeasureMark1 does real signal processing, and UltrasoundMark1 trains an RL agent. That's real.
+- If you use an LLM, wrap real logic around it: your own scoring maths, a simulation, live sensor data, a dataset you processed.
+
+**The test:** if you swapped ChatGPT out tomorrow, would most of your project still exist? If yes, it's real.
+
+These judges have built order books and RL drones, so they'll ask **"how does it work?"** You need a satisfying answer to that question, ideally one sentence plus a peek at the code or the hardware.
+
+---
+
+## "Low latency"
+
+**Latency = delay**: the time between something happening and your system reacting to it.
+
+**Analogy:** two people at an auction. One is in the room and raises a paddle instantly. The other bids by email. The one in the room wins even if both decided at the same moment.
+
+**Numbers, to get a sense of scale:**
+| Thing | Rough delay |
+|---|---|
+| Blink of an eye | 100–400 ms (milliseconds) |
+| A typical website loading | 200–1000 ms |
+| A ChatGPT reply starting | 500–2000 ms |
+| Ping London → New York | ~70 ms |
+| A fast trading system reacting to a price change | **a few microseconds** (1 µs = one millionth of a second) |
+| Light travelling 300 m | 1 µs |
+
+So "low latency" in trading means **reacting about 100,000× faster than you can blink**.
+
+**Why trading firms care:** when a price moves, the first firm to react gets the good trade and everyone after gets a worse price. Being 1 µs faster is literally money. That's why firms put their servers inside the exchange's building.
+
+**What low-latency engineers actually do:**
+- Write C++ or Rust instead of Python, because Python is roughly 50–100× slower.
+- Avoid anything that pauses the program unpredictably: memory allocation, locks, garbage collection.
+- Make data fit the CPU cache, and sometimes use special network cards or FPGAs (programmable chips).
+- **Order book / matching engine** (what Edward and Jakub both built) is the core of an exchange. It keeps the list of buy and sell orders and matches them, and it has to do that in microseconds.
+
+**What it means for you this weekend:** you don't need to build a low-latency system. But if your project has a *speed* angle, those judges will be genuinely interested, especially when you show the measured number ("it reacts in 3 ms"). An ESP32 reacting to a sensor in real time, or a live simulation that updates instantly, would both count.
+
+Send the problem statements when they're revealed and we'll start on ideas.
+------------------------------------------------------------
+USER:
+give me back up ideas for sponsors and keep the notes u gave me in mind
+------------------------------------------------------------
+CLAUDE:
+I wrote two backup ideas for each sponsor and saved them to `WHACK MARK 1\backup_ideas (2026-11-07).md`. Every idea follows the rules from the intel notes:
+- a familiar format, not a dashboard or quiz;
+- relatable to the sponsor and a general audience, so it can also go for Most Creative;
+- your own logic or hardware does the work, with any AI as just one part;
+- the sponsor's actual product gets named in the pitch.
+
+## 🟦 Capital One (credit / financial literacy)
+**C1. "Day Zero": arrive in the UK with no credit file** ⭐
+- **Format:** a swipe-card life sim, like Reigns. You play an international student, and each card is a real choice: register on the electoral roll? Phone contract? Credit-builder card? Pay in full or just the minimum? The game covers 24 months.
+- **Real part:** your own credit-score engine built on the real UK factors: electoral roll, keeping card use under 30% of the limit, on-time payments, credit checks, account age. It also shows *why* the score moved.
+- **Hardware option:** an ESP32 + servo "credit gauge" needle that swings as you play.
+- **Why it wins:** it's exactly Capital One UK's target customer, and it's your own story.
+
+**C2. "Thirty": a desk pet that reacts to your card spending**
+- An ESP32 pet that's happy while you're under 30% of your limit and sad when you go over.
+- Its twist is teaching the statement date vs the due date, which most people don't know.
+- ⚠️ It's close to the 2024 winner (a virtual-pet savings game), so it only works if that twist lands.
+
+## 🟥 Brevan Howard (information accuracy)
+**B1. "AI Polygraph"** ⭐
+- You paste a claim or an AI answer. Several AI models answer it separately, the claim gets split into smaller checkable claims, and each one is checked against sources.
+- A **servo pen scribbles the disagreement on paper**, like a real polygraph.
+- It takes the best idea from last year's winner (AI vs AI disagreement) and makes it physical, which also suits Most Creative.
+
+**B2. "Pundit League"**
+- A football-style league table for forecasters (economists, news outlets, AI models), scored on how their past predictions actually turned out.
+- **Real maths:** a calibration test: when they say "80% sure", are they right 80% of the time?
+- It answers a trader's question: whose forecast do I trust? It's also close to Marshall Wace's TOPS, so it could switch tracks.
+
+## 🟩 Marshall Wace (abstract theme)
+**M1. "Crowd Exchange"** ⭐⭐ (best fit for these judges)
+- A mini stock market where AI agents (trend-followers, panic sellers, news-reading analysts) trade on **your own order book and matching engine**.
+- Bubbles and crashes emerge on their own. The audience presses a big red button to "inject a rumour" and watches the chain reaction.
+- Edward and Jakub have both built matching engines, so they'll appreciate it. Quote a measured speed, e.g. orders per second.
+- It bends to any of their past themes: emergent behaviour, chain of events, bridging worlds. It also ties to TOPS.
+
+**M2. "Mirror"**
+- A cut-down version of your Wireless Mirror Arm: you move one pan-tilt rig by hand and a second one copies it over Wi-Fi ("bridging worlds").
+- ⚠️ Only pick this if the parts are already in your bag.
+
+## 🟨 incident.io (fast-changing information; a creative take wins)
+**I1. "Plan B": incident response for your trip** ⭐
+- It treats a group trip like a production system:
+  - watches live train data;
+  - declares an "incident" when your train is cancelled;
+  - assigns jobs to each friend;
+  - shows a status page;
+  - writes a post-mortem afterwards.
+- It uses incident.io's own vocabulary on real life. Everyone can relate, and it reuses your Cathay disruption idea.
+
+**I2. "Code Blue": on-call paging for patient vitals**
+- ESP32 pulse sensors on teammates. Alerts get de-duplicated and escalated the way on-call paging works, and AI writes the nurse handover. It's your biomed story.
+- ⚠️ The KY-039 sensor was noisy. Use a MAX30102 if you have one, or fake the data stream.
+
+## My ranking
+1. **M1 Crowd Exchange**: hits the judges' interests (matching engine + simulation + hardware)
+2. **B1 AI Polygraph**: best chance at Most Creative as well
+3. **C1 Day Zero**: most relatable, and your own story
+4. **I1 Plan B**
+
+**Timeline for any of them:**
+- Lock the idea by 12:00.
+- Core logic working by 18:00, full MVP by 23:00.
+- Feature freeze at 08:00.
+- Devpost images and a short video 09:00–10:30, submit before 11:00.
+
+Once the real problem statements are out, send them along with your team size and skills, and I'll adapt or swap these.
+------------------------------------------------------------
+USER:
+ok for now, i added 4 pictures that will be the main tracks and problem statements, the main sponsors include marshall wace, capital one, brevan howard, incident io, netcraft and bloomberg but netcraft and bloomberg dont have a track and here mainly to recruit --> here are my notes after talking to the few judges : capital one --> financial literary and something to do with user spending and budgeting could be helpful the judge gave the monopoly idea 3d printed and snackonomics last year the wins, for brevan howard i forgot just the problem statemenet with new world they emphasized with a space game idea that was a new discovery that they really liked and the idea is creative and problem solving, and also the judge (nikola) is currently working for pricing acrruacy for stocks in the company
+------------------------------------------------------------
+USER:
+[Image: original 2254x1270, displayed at 2000x1127. Multiply coordinates by 1.13 to map to original image.]
+------------------------------------------------------------
+USER:
+[Image: original 2262x1268, displayed at 2000x1121. Multiply coordinates by 1.13 to map to original image.]
+------------------------------------------------------------
+USER:
+[Image: original 2270x1274, displayed at 2000x1122. Multiply coordinates by 1.14 to map to original image.]
+------------------------------------------------------------
+USER:
+[Image: original 2252x1266, displayed at 2000x1124. Multiply coordinates by 1.13 to map to original image.]
+------------------------------------------------------------
+CLAUDE:
+The real prompts differ from what past years predicted, so I've thrown out the backup ideas and started again. The 4 statements, your judge notes and the new ideas are saved in `WHACK MARK 1\REAL tracks + ideas (2026-11-07).md`.
+
+**Quick check on your notes:** "New Worlds" is the **Marshall Wace** statement, not Brevan Howard's. Was the space game comment from a Marshall Wace judge? I've assumed so below.
+
+## What changed from our predictions
+| Track | We expected | Actual | Prize (each) |
+|---|---|---|---|
+| Capital One | financial literacy | **credit accessibility for people with accessibility needs** (disabilities) | Meta Quest 3S |
+| Brevan Howard | information accuracy | **AI researcher that tells a real discovery from luck** | Apple Watch |
+| Marshall Wace | abstract theme ✅ | **"New Worlds"** | iPad + Pencil |
+| incident.io | fast-changing info | **real-time agent with personality, reacting to camera/mic/screen/game** | 24" monitor |
+
+---
+
+## 🟨 incident.io: "Courtside" ⭐⭐ (best match for your skills)
+**An AI basketball commentator with a big personality that watches a live camera and calls the action as it happens.**
+- **Live demo:** a paper ball and a bin at the judging table. A judge shoots, and the AI yells "FROM DOWNTOWN!" or roasts the airball the moment it lands.
+- **What you'd actually build:**
+  - YOLO detects the ball and hoop (you already used it on Clinton's face tracker).
+  - Your own code decides made or missed and tracks streaks.
+  - The AI only writes the line, and a fast voice speaks it (Piper, from Jarvis).
+- **Hardware option:** an ESP32 pan-tilt camera head that follows the ball, so the commentator physically "looks".
+- **Why judges like it:** it hits every word of the prompt (live feed, personality, in the moment). Showing "reaction in 0.4 s" is the latency point Sam (the Google SRE intern) and the trading-minded judges care about. It's relatable, and it's your basketball story.
+- **Risk:** latency. Keep the AI call short or stream it, and prepare some reactions in advance as a fallback.
+- **Alt:** "Backseat", which watches your screen while you play a game and commentates or roasts you live. Easier, but more teams will do it.
+
+## 🟥 Brevan Howard: "The Skeptic" ⭐
+**An AI researcher that comes up with patterns, then tries hard to prove itself wrong.**
+- **Loop:**
+  1. The AI proposes a hypothesis, e.g. "stocks rise after 3 down days" or "players shoot better after 2 makes".
+  2. Your own stats code attacks it:
+     - test on data it never saw;
+     - shuffle the data randomly 1,000 times: does the pattern still appear by luck?;
+     - penalise it for how many ideas it tried;
+     - check whether the effect survives trading costs.
+  3. Verdict: **Real / Lucky / Not sure**, with the evidence.
+- **Killer demo:** feed it **pure random noise**. A naive AI "finds" 20 patterns, and The Skeptic correctly kills all 20. Then feed it real data and one pattern survives.
+- **Hook:** the basketball **"hot hand"**, a famous debate about whether streaks are real or luck. Everyone gets it.
+- **For Nikola (stock pricing accuracy):** include a markets example such as "is this mispricing signal real or just noise?" and ask him at networking what a false discovery costs in his work.
+- **Why it's real:** the maths is yours. The AI only proposes ideas and explains results, which is exactly what the prompt asks for.
+
+## 🟩 Marshall Wace: "Far Worlds" ⭐
+**Fly a spaceship to real exoplanets. Each world is generated from real NASA data.**
+- **How it works:** NASA's Exoplanet Archive gives each planet's star temperature, orbit distance, mass and radius. Your physics turns those into:
+  - sky colour (star type);
+  - surface temperature, so ice, ocean or lava;
+  - gravity, so how high you can jump;
+  - day length.
+- **Story:** every planet you visit is a real one that no human has ever seen. It's a "door to the unexplored" built on new data. That's a space game, which their judge liked, but every world is grounded in real science.
+- **Hardware option:** an ESP32 gyro joystick to steer the ship (your Shinecon gyro work). There's also a VR angle.
+- **Alt:** "Market Galaxy": every stock is a planet, and stocks that move together pull each other in like gravity. You "discover" hidden clusters. It ties into Marshall Wace's real business, but is less charming.
+
+## 🟦 Capital One: "Touch Budget"
+**A 3D-printed tactile device that talks, so blind, low-vision, elderly or number-anxious customers can manage their card on their own.**
+- **The device:**
+  - big physical buttons: "How much left?", "What did I spend today?", "Freeze card";
+  - a servo needle that shows budget left by feel;
+  - a vibration when near the limit;
+  - an AI voice that explains things in plain words.
+- **Why it fits:** it targets the "accessibility requirements" part directly and covers the budgeting the judge mentioned. A 3D-printed physical object echoes the WHACKMOPOLY Most Creative win, and you have the Core One printer, though printing on the day is hard. Use cardboard or a pre-made enclosure if needed.
+- **Alt:** "Easy Read Statements", where AI turns a card statement into pictures, colours and short sentences for people with dyscalculia or learning disabilities. Software only and safer, but plainer.
+
+---
+
+## My pick
+1. **Courtside (incident.io).** The prompt was basically written for this. It's live and funny, uses your existing YOLO and voice code, and has a hardware option.
+2. **The Skeptic (Brevan Howard).** Strongest "real underneath" maths, and you can tell Nikola it's directly relevant to his work.
+3. Far Worlds, if the space game comment was from Marshall Wace and you want Most Creative.
+
+To lock one in, I need:
+1. **Team size and skills.**
+2. **Hardware in your bag** (ESP32-CAM? servos? pulse sensor?).
+3. Whether the space game comment came from Marshall Wace.
+------------------------------------------------------------
+USER:
+can u summarise everything weve talked about so far so i dont get too overwhelmed, also for capital one i dont think that is wut they mean by accessible i think it means more generalised and regular ppl can independently manage their finances, also give me more ideas for each of the problem statements
+------------------------------------------------------------
+CLAUDE:
+I've saved a one-page version of everything to `WHACK MARK 1\SUMMARY + idea list (2026-11-07).md`.
+
+## 📌 Summary so far
+- **Format:** submissions close **11:00 Sunday**, then a **5-minute live pitch to one sponsor**. A working demo matters most.
+- **Tracks:**
+  - **incident.io:** an agent that reacts to a live feed, with personality
+  - **Brevan Howard:** an AI researcher that can tell a real discovery from a lucky one
+  - **Marshall Wace:** "New Worlds"
+  - **Capital One:** "Make Credit Accessible"
+  - Bloomberg and Netcraft are only there to recruit.
+- **Your judge notes:**
+  - Capital One wants budgeting and spending, and liked last year's 3D Monopoly and Snackonomics.
+  - A space game impressed one judge. Was that Marshall Wace?
+  - Nikola (Brevan Howard) works on stock pricing accuracy.
+- **Organiser judges:** Warwick CS students with quant interests. They like simulations and hardware.
+- **Winning formula:** a familiar format (game, pet, gadget) plus the sponsor's real problem, a live demo, and one measured number. Your own code should do the real work; a project that just calls ChatGPT won't impress them.
+
+**Capital One, your reading:** fair enough, I'll go with "everyday people managing money on their own". The slide does also say "accessibility requirements", so it's worth asking their judge which they mean. Ideas that are simple and voice-friendly cover both readings.
+
+---
+
+## 🟨 incident.io: live agent with personality
+1. **Courtside:** an AI basketball commentator watching a camera. For the demo, a judge throws a paper ball into a bin.
+2. **Hype Man:** listens to your pitch live, cheers, heckles your "um"s and coaches your pace. You'd use it *during* your actual pitch.
+3. **Phone Goblin:** a desk creature with a camera that watches you study. Its servo head snaps round and nags when you pick up your phone.
+4. **Backseat:** watches your game screen and roasts or coaches you live.
+
+## 🟥 Brevan Howard: real discovery vs luck
+1. **The Skeptic:** comes up with patterns, then tries to break them (tests on unseen data, shuffles the data 1,000×). Feed it random noise and it rejects everything.
+2. **Hot Hand Court:** a courtroom game. A prosecutor AI and a defence AI argue whether a sports streak is real, the stats are the evidence, and the court gives a verdict.
+3. **Skill or Luck?:** give it a finfluencer's or trader's track record. It simulates 10,000 random "monkey" traders and shows whether the real one actually beats luck. This ties in well with Nikola.
+4. **Miracle Cure Check:** for health claims or A/B tests. It shows how trying many times creates fake wins.
+
+## 🟩 Marshall Wace: New Worlds
+1. **Far Worlds:** fly to real exoplanets, with each one generated from NASA data and real physics.
+2. **First Contact:** two AI civilisations on a simulated planet invent a language and start trading, and you watch it happen.
+3. **Sound Worlds:** any song or voice turns into a planet you can walk on.
+4. **Market Galaxy:** stocks are planets and correlation is gravity, so you discover hidden clusters.
+
+## 🟦 Capital One: Make Credit Accessible
+1. **Day Zero:** a swipe-card life sim where you start the UK credit system from zero (student, newcomer, first card), scored by a credit model you build.
+2. **Can I Afford It?:** one question before you buy. It checks your budget, upcoming bills and how much credit you're using, then answers yes or no and explains why.
+3. **Budget Boss Fight:** your monthly budget is a game boss, and your spending is what attacks you.
+4. **Statement Translator:** photograph a confusing statement and get it in plain words, plus what to do next (e.g. the minimum-payment trap).
+
+---
+
+## ⭐ My shortlist
+1. **Courtside** or **Hype Man** (incident.io): closest fit to the prompt and to your skills
+2. **The Skeptic** or **Skill or Luck?** (Brevan Howard)
+3. **Day Zero** or **Can I Afford It?** (Capital One)
+
+Pick 2–3 that excite you and tell me your team size and skills. Then we'll choose one and plan the build.
+------------------------------------------------------------
+USER:
+can u give me examples serval that is NOT a wrapper and wut they mean by technically real
+------------------------------------------------------------
+CLAUDE:
+## What "technically real" means
+**A wrapper** is an app where ChatGPT does all the work. You send it text, it sends text back, and you display it. Take the AI away and nothing is left.
+
+**Technically real** means *your own code* does the important work. The AI is one helper part, like the voice or the writer, and it isn't the brain.
+
+**A quick test:** a judge asks "how does it work?" If your honest answer is "we send it to GPT", that's a wrapper. If your answer explains *your* logic, it's real.
+
+---
+
+## Examples: the same idea, done both ways
+
+### 1. Courtside (basketball commentator)
+- ❌ **Wrapper:** send a webcam photo to GPT every 5 seconds and ask "what's happening?"
+  - It's slow, it misses the shot, and every team could build that in an hour.
+- ✅ **Real:**
+  - **Your code** tracks the ball frame by frame with YOLO.
+  - It works out the ball's path and decides **"made" or "missed"** itself.
+  - It counts streaks and fires an event within **0.3 s**.
+  - Only then does the AI write a one-line joke for the event, which a voice speaks.
+  - What you show the judge: *"here's our shot-detection logic, and here's the measured reaction time."*
+
+### 2. The Skeptic (Brevan Howard)
+- ❌ **Wrapper:** upload a CSV and ask GPT "is this pattern real?"
+  - GPT just guesses confidently, which is the exact problem the prompt describes.
+- ✅ **Real:**
+  - The AI only *proposes* ideas.
+  - **Your stats code** tests each one:
+    - **Unseen data:** test on data it never saw.
+    - **Shuffle test:** shuffle the data 1,000 times and count how often luck produces the same pattern.
+    - **Many-tries penalty:** penalise it for trying 50 ideas.
+  - What you show the judge: *"we fed it pure random noise and it rejected all 20 fake patterns."*
+
+### 3. Skill or Luck? (finfluencer checker)
+- ❌ **Wrapper:** "GPT, is this trader skilled?"
+- ✅ **Real:**
+  - **Your code** simulates 10,000 random traders making coin-flip trades.
+  - It plots where the real trader ranks. Top 0.1% suggests skill. Top 30% is just luck.
+  - The AI only explains the chart in plain English.
+
+### 4. Day Zero (Capital One credit sim)
+- ❌ **Wrapper:** a chatbot you ask "how do I build credit?"
+  - It's basically a worse Google.
+- ✅ **Real:**
+  - **Your own credit-score model** uses real UK factors: electoral roll, using under 30% of your limit, missed payments, number of applications, account age.
+  - It runs month by month as you make choices, and the score moves for a reason you can show.
+
+### 5. Can I Afford It? (Capital One)
+- ❌ **Wrapper:** "GPT, can I afford £80 trainers?"
+- ✅ **Real:**
+  - **Your code** reads the (mock) transactions.
+  - It predicts upcoming bills from repeat payments it detects, e.g. rent on the 1st and Spotify on the 15th.
+  - It calculates money left until payday and how the purchase changes your credit use.
+  - Then it gives a yes or no with numbers. The AI only phrases the answer kindly.
+
+### 6. Far Worlds (Marshall Wace)
+- ❌ **Wrapper:** "GPT, describe an alien planet", plus an AI-generated picture.
+- ✅ **Real:**
+  - Real NASA data goes into **your physics**:
+    - star temperature gives the sky colour;
+    - distance from the star gives surface temperature, so ice or lava;
+    - mass and radius give gravity, so how high you jump.
+  - Your code builds the world from those numbers, and every planet is different *for a real reason*.
+
+### 7. Phone Goblin (incident.io)
+- ❌ **Wrapper:** a chatbot that says "stop using your phone!" when you type to it.
+- ✅ **Real:**
+  - A camera plus phone detection, running live on your laptop.
+  - **Your ESP32 + servo** physically turns its head towards you within half a second.
+  - A grumpy voice nags you, and it gets angrier each time.
+
+---
+
+## The pattern
+| Part | Who does it |
+|---|---|
+| Detecting, measuring, calculating, simulating, deciding | **Your code** ✅ |
+| Writing a funny line, explaining a result in plain English, the voice | AI (fine as a helper) |
+
+**Why judges care:** anyone can call an AI in an hour. The organiser judges have built trading engines and drone sims, so they'll ask "what did *you* build?" A real project has a good answer to that. Usually it's **a number you measured** (reaction time, accuracy, how many fake patterns it rejected) or **something physical moving**.
+
+Want me to sketch the build plan for whichever of these you're leaning towards?
+------------------------------------------------------------
+USER:
+wtf does incident.io do
+------------------------------------------------------------
+CLAUDE:
+**In one line:** incident.io helps tech companies deal with it when their app or website breaks.
+
+## Analogy: a fire brigade for software
+Say Deliveroo's app crashes at 7pm on a Friday. Nobody can order, and they lose thousands of pounds a minute. Someone has to:
+1. **Notice** it's broken,
+2. **Wake up** the right engineer, even at 3am,
+3. **Gather** everyone in one place to fix it,
+4. **Tell customers** "we know, we're fixing it",
+5. **Write up** afterwards what went wrong so it doesn't happen again.
+
+That whole mess is called an **incident**, and incident.io is the software that runs it.
+
+## What the product actually does
+| Step | incident.io feature |
+|---|---|
+| Something breaks | **Alerts** come in from monitoring tools ("server down!", "error rate is 40%") |
+| Wake the right person | **On-call paging**: phones the engineer whose turn it is that week |
+| Fix it together | Automatically opens a **Slack channel** for the incident, assigns roles (who leads, who talks to customers) and keeps a timeline |
+| Tell customers | **Status page**, e.g. "Payments are slow, fix in progress" |
+| Learn from it | **Post-mortem**: a report of what happened and why |
+| Their new AI part | **AI SRE**: an AI that investigates *while the incident is happening*, reading logs and recent code changes and saying "this probably broke because of Tuesday's update" |
+
+(**SRE** = Site Reliability Engineer, the person whose job is keeping the website up.)
+
+## Who uses it
+Netflix, Linear, Etsy, Ramp, and reportedly OpenAI. It's a London startup founded by ex-Monzo engineers. Their main rival is PagerDuty.
+
+## How this connects to their prompt
+Their whole business is about **reacting in real time**: when something breaks, every second counts, and asking an AI afterwards is too late. That's why their problem statement says *"the world doesn't wait… build an agent that reacts to a live feed as it happens."*
+
+They aren't asking you to build incident software. They want the **same spirit** applied to anything fun: a basketball game, your pitch, your gameplay. Last year they rewarded a creative off-topic idea over the literal one.
+
+So **Courtside** fits their prompt: the agent watches live, reacts instantly, has a personality, and is about real time, just like their product.
+------------------------------------------------------------
+USER:
+can u talk more aout charactercompass for incident.io
+------------------------------------------------------------
+CLAUDE:
+I pulled their Devpost page. Here's what they built, and what it means for you this year.
+
+## What CharacterCompass was (incident.io winner, WHACK 2025)
+**An AI companion for novelists.** As an author writes their story, the app keeps a live profile of every character:
+- personality
+- goals and motivations
+- relationships
+- backstory
+
+These **update as the story develops**. You can also **chat with your characters** as if they were alive, and they answer using everything that has happened in the plot so far.
+
+**Their reasoning, in their own words:** they had author friends who struggle with how a character would react, and they saw a match with incident.io's prompt about "the ever-evolving brain of an author".
+
+## How they built it
+- **AI:** OpenAI models + LangChain (Python)
+- **Database:** SQLite
+- **Frontend:** Flutter web app, clean and friendly. Their screenshots are mostly polished profile pages.
+- **Real-time attempt:** they first tried updating live from Google Docs as you type, but the **API was too slow, so they gave up** and used local documents instead.
+
+## Problems they hit
+- **AI hallucinations:** they tested on Harry Potter, and the AI "knew" future events the characters shouldn't know yet, and invented experiences in chat. They fixed it "we think" with prompt rules and lower temperature (less random answers).
+- It was **their first hackathon**. Their verdict: "It works! (Mostly)".
+
+## Why it won (my honest read)
+1. **Creative reframe:** everyone else built DevOps or engineering tools. They took "constantly changing information" and applied it to storytelling. It stood out.
+2. **Relatable:** anyone gets "chat with a character from your book" in 5 seconds.
+3. **Personality:** talking characters were the memorable part.
+4. **Polished UI:** it looked like a real product, and incident.io cares about product polish.
+
+**One honest caveat:** technically it was **fairly close to a wrapper**. It was mostly prompts going to OpenAI, and the real-time part failed. So last year's incident.io judges rewarded **creativity + personality + polish** more than technical depth. Technical depth will still help with the organiser judges and Most Creative.
+
+## What this means for 2026
+This year's prompt is **much more specific**. It asks for a live feed (camera, mic, screen or game), reacting *in the moment*, *with personality*. So:
+
+| Last year's lesson | How to apply it now |
+|---|---|
+| Creative, off-domain angle wins | Don't build an incident or DevOps bot. Pick something fun like basketball, a pitch or a game |
+| Personality was the memorable part | Give your agent a **strong character** (a hype commentator, a grumpy goblin, a sarcastic coach) |
+| Their real-time part **failed because of slowness** | **Speed is your edge.** Make it actually live and show the reaction time |
+| Polished product wins | Spend the last few hours on UI, voice quality and a smooth demo |
+
+**You have a head start:** your **Persona Chat** project (replying in character) is already the "personality" half of the work. Courtside, Hype Man or Phone Goblin would add the **live** half that CharacterCompass couldn't manage.
+
+Want me to save this into the WHACK folder and sketch a Courtside or Hype Man build plan next?
+------------------------------------------------------------
+USER:
+can we focus a lil bit on incident.io, we have a couple ideas floating around, my teammate thought on escape room idea kinda like escape from granny game but the anatgonist is an ai agent that forces to make deiciosn to teach u about financial literrary to put u in financial situations and as more decisions are being made the game changes or ai agent adapt or environment adapt, ai learns how to throw u off and change the maze, i thought of sth to do with instant feedback and reactive that requires improving on the spot such as driving at the beginning learning how to drive, or gym posture, or basketball shooting form or in game basketball strategy for coaching
+------------------------------------------------------------
+CLAUDE:
+Both ideas can work. Here's how each one fits the prompt, and how I'd shape it.
+
+## The prompt's 3 must-haves
+1. **A live feed:** camera, mic, screen or game
+2. **Reacts in the moment**, not after you ask a question
+3. **Personality**
+
+---
+
+## 💡 Your teammate's idea: an AI antagonist in an escape room (Granny-style)
+**What's good:**
+- "Pointed at a game" is literally in the prompt.
+- An antagonist that adapts to you has a lot of personality.
+- Games demo well.
+
+**Problems:**
+- **The finance part pulls it towards Capital One, not incident.io.** incident.io judges won't care about financial literacy, and Capital One's prompt this year is credit accessibility. A mixed idea risks not fully fitting either track.
+- **Turn-based decisions** ("pick A or B") is the "answer after the fact" pattern the prompt criticises. The AI has to react *while* you play.
+- **Scope:** a 3D game, an adaptive maze and an AI agent in 24h is a lot.
+
+**How to make it fit incident.io:** drop the finance part. Make the AI antagonist **watch the player live**:
+- your **webcam:** it sees you hesitate, look away or panic;
+- your **mic:** it hears you whisper to your teammate;
+- your **in-game movement:** where you go and how long you stand still.
+
+It rearranges the maze, taunts you and cuts the lights **in that moment**. That counts as real time.
+
+**For Capital One instead:** keep the finance and add credit decisions, but that's a separate pitch.
+
+---
+
+## 💡 Your idea: an instant-feedback coach
+This **fits the prompt very well**. Here's your pitch line:
+
+> *"incident.io catches problems **during** an incident, not in the post-mortem. Our coach catches your mistake **during the rep**, not when you watch the video back later."*
+
+**Which version should you pick?**
+| Version | Live demo at judging table? | Difficulty | Verdict |
+|---|---|---|---|
+| 🚗 Learning to drive | ❌ Can't drive in the room. A sim is possible but heavy | Hard | Skip |
+| 🏋️ **Gym posture (squat, push-up)** | ✅ The judge does 3 squats on the spot | **Easy–Medium** | ⭐ Safest |
+| 🏀 **Shooting form** | ✅ Shooting motion with a paper ball | Medium | ⭐ Best story (yours) |
+| 🎮 In-game basketball strategy | ⚠️ Needs a game feed (NBA 2K screen) and is hard to read | Hard | Risky |
+
+### How it works (this is what makes it real, not a wrapper)
+1. **Camera → pose detection** (MediaPipe, free, runs on a laptop). It gives 33 body points in each frame.
+2. **Your code** calculates **joint angles**: knee, hip, back, elbow, wrist.
+3. **Your rules** check the form. Examples:
+   - squat: knee caving in, back rounding, not deep enough;
+   - shot: elbow flaring out, no follow-through, release too low.
+4. **Your rep counter** tracks each rep from start to finish (down → bottom → up = 1 rep).
+5. **Instant voice cue in under 0.3 s**, e.g. "KNEES OUT!" mid-rep. These are short, pre-written lines, so they're fast.
+6. **The AI** is only the personality layer. It does the banter between sets and a summary at the end, e.g. "rep 4 was your best, your elbow drifts when you're tired".
+
+### The personality (this is the part people will remember)
+Let the user pick a coach:
+- 🪖 **Drill sergeant:** "THAT'S NOT A SQUAT, THAT'S A CURTSY"
+- 🎉 **Hype man:** "LET'S GOOO, that depth was CLEAN"
+- 😐 **Disappointed dad:** "…I'm not mad. Just do it again."
+
+### What you show the judges
+- A judge does a squat or shot live, and the coach reacts mid-movement.
+- On screen: the skeleton overlay, joint angles in real time, a form score, and a "reaction time: 180 ms" counter.
+- **Optional hardware:** an ESP32 with a buzzer or vibration motor on the wrist that buzzes when your elbow flares. That's instant physical feedback.
+
+---
+
+## My recommendation
+**Go with the coach, either gym or shooting form.** Gym is the easiest to demo reliably. Shooting is the best story and fits you as KCL basketball VP. You could do **squat first, then add shooting form** if there's time.
+
+**To keep your teammate's idea:** the "adapts to you" part fits naturally here too. The coach notices **you're tired** (form drops after rep 6) and **changes the plan live**, e.g. "dropping you to 3 more reps". That's adaptive and live, and it has personality.
+
+**Before we plan the build:**
+1. Gym, shooting, or both?
+2. How many teammates, and who's comfortable with Python or a frontend?
+------------------------------------------------------------
+USER:
+for now we will work on the escape maze idea but u nede to fine tune it for us, we cna work on other ideas after if we have time, for now create an entire plan and tiemline for making it, the idea in detail and feedback give it to me and we are going with incident io track, scrub the finance part we can do anything but the reactive game is the key and reactive anatgonist, i will give u our full idea prompt after, here is my git repo : https://github.com/cklaw25/partyringmark1, tech stack what do we nede ?
