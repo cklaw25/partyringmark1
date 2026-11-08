@@ -30,5 +30,5 @@ cd frontend
 npm install
 npm run dev              # open http://localhost:5173  (?seed=42 for another maze, ?mode=full for 30 min)
 ```
-3D controls: WASD + mouse · SHIFT run (loud) · C crouch (under cameras) · E interact / hide / terminal · SPACE throw bottle · TAB agent panel · V show hunter on minimap
+3D controls: WASD + mouse · SHIFT run (loud) · SPACE jump · C crouch (under cameras) / mid-air slide (chain jump+slide for extra speed) · E interact / hide / terminal · CLICK throw bottle · F3 speed readout · TAB agent panel · V show hunter on minimap
 2D controls: WASD move · SHIFT run (loud) · E interact/hide · SPACE throw bottle · V toggle fog · M simulate a mic shout

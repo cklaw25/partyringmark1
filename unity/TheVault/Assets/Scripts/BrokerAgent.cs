@@ -82,7 +82,7 @@ public class BrokerAgent : MonoBehaviour
             return;
         }
         investigation = n; SetState("INVESTIGATE", $"heard {n.kind} noise"); GoTo(new Tile(n.x, n.y));
-        if (n.kind != "run") game.Say(Pick("I heard that.", "Coming.", "There you are..."), true);
+        if (n.kind != "run" && n.kind != "land") game.Say(Pick("I heard that.", "Coming.", "There you are..."), true);
     }
 
     // ---------- strategy from the slow path (already validated by VaultGame) ----------

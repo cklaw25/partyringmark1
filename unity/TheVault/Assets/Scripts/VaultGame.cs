@@ -440,7 +440,7 @@ public class VaultGame : MonoBehaviour
             Emit("door_used", ("door", door.id), ("zone", door.zone), ("times", n + 1));
         }
         var it = maze.items.FirstOrDefault(i => i.x == t.x && i.y == t.y);
-        if (it != null) { maze.items.Remove(it); Destroy(itemGo[it]); itemGo.Remove(it); bottles++; Toast("Picked up a bottle (SPACE to throw)"); }
+        if (it != null) { maze.items.Remove(it); Destroy(itemGo[it]); itemGo.Remove(it); bottles++; Toast("Picked up a bottle (CLICK to throw)"); }
         var roomName = maze.RoomAt(t.x, t.y);
         if (roomName != null && rooms.TryGetValue(roomName, out var er) && !er.done && !er.active && ActiveRoom == null) EnterRoom(er);
         if (roomName == "central" && centralOpen) EndGame(true);
@@ -453,15 +453,19 @@ public class VaultGame : MonoBehaviour
         var sw = Stopwatch.StartNew();
         float dt = Mathf.Min(0.05f, Time.deltaTime); elapsed += dt;
         if (Input.GetKeyDown(KeyCode.Escape)) { if (puzzleOpen) ClosePuzzle(); Cursor.lockState = CursorLockMode.None; Cursor.visible = true; }
-        if (Input.GetMouseButtonDown(0) && Cursor.lockState != CursorLockMode.Locked && !puzzleOpen) { Cursor.lockState = CursorLockMode.Locked; Cursor.visible = false; }
+        bool wasLocked = Cursor.lockState == CursorLockMode.Locked;
+        if (Input.GetMouseButtonDown(0) && !wasLocked && !puzzleOpen) { Cursor.lockState = CursorLockMode.Locked; Cursor.visible = false; }
         if (Input.GetKeyDown(KeyCode.E)) Interact();
-        if (Input.GetKeyDown(KeyCode.Space) && !puzzleOpen) ThrowBottle();
+        // left click throws (but not the click that re-captures the mouse); SPACE is jump, handled by the player
+        if (Input.GetMouseButtonDown(0) && wasLocked && !puzzleOpen && !player.hidden) ThrowBottle();
         if (Input.GetKeyDown(KeyCode.M)) MicNoise();
         if (Input.GetKeyDown(KeyCode.Tab)) showPanel = !showPanel;
         if (Input.GetKeyDown(KeyCode.V)) revealBroker = !revealBroker;
 
         player.Tick(dt);
         var pt = player.T;
+        // landings are heard; faster landings carry further
+        if (player.landedThisFrame) broker.Hear(new NoiseEvent { x = pt.x, y = pt.y, radius = 3 + player.landSpeed * 0.5f, kind = "land" });
         if (pt.x != lastTile.x || pt.y != lastTile.y) { OnTile(pt); lastTile = pt; }
         if (over) return;
         mem.Tick(dt, maze.ZoneOf(pt.x, pt.y), player.moving, player.running);
@@ -534,7 +538,7 @@ public class VaultGame : MonoBehaviour
         string roomsTxt = string.Join(" · ", rooms.Values.Select(r => $"{r.name} {(r.done ? "✓" : r.active ? $"[{r.locks}/3]" : "✗")}"));
         float y = 6;
         y = WrapLabel(new Rect(12, y, pw - 24, 0), $"<b><color=#e04848>THE VAULT</color></b>  <b>DAY {day}/3</b>  <color={tc}><b>{threat}</b></color>  {(int)(left / 60)}:{(int)(left % 60):00}  rooms: {roomsTxt}  bottles {bottles}{(player.crouched ? "  <color=#7fb3d5>CROUCHING</color>" : "")}", S(Fs(16), Color.white));
-        y = WrapLabel(new Rect(12, y, pw - 24, 0), "WASD move · SHIFT run (loud) · C crouch · E interact/hide/terminal · SPACE throw · TAB panel · V hunter on map · ESC mouse", S(Fs(12), DIM));
+        y = WrapLabel(new Rect(12, y, pw - 24, 0), "WASD move · SHIFT run (loud) · SPACE jump · C crouch / mid-air slide · E interact/hide/terminal · CLICK throw · TAB panel · V hunter on map · ESC mouse", S(Fs(12), DIM));
         var ar = ActiveRoom;
         y = DrawObjective(pw, y + 4, ar);
         if (ar != null && !ar.breached && !puzzleOpen)
@@ -629,7 +633,7 @@ public class VaultGame : MonoBehaviour
         GUILayout.Label("<b>2.</b>  Solve each room's puzzle. <b>3 mistakes</b> and the door opens for the monster", S(17, Color.white));
         GUILayout.Label("<b>3.</b>  Reach the <b>exit in the centre</b> of the maze", S(17, Color.white));
         GUILayout.Space(4);
-        GUILayout.Label("<color=#ff6b6b><b>THE BROKER</b></color> (red eyes) hunts you and <b>learns your habits</b>. Getting caught costs 1 of your <b>3 days</b>.\nRun = fast but loud · C = crouch under cameras · E = hide in lockers · SPACE = throw a bottle to distract it", S(14, DIM));
+        GUILayout.Label("<color=#ff6b6b><b>THE BROKER</b></color> (red eyes) hunts you and <b>learns your habits</b>. Getting caught costs 1 of your <b>3 days</b>.\nRun = fast but loud · SPACE = jump, C in mid-air = slide (chain them to go faster - loudly) · C = crouch under cameras · E = hide in lockers · CLICK = throw a bottle to distract it", S(14, DIM));
         GUILayout.Space(6);
         GUILayout.Label($"Strategist link: {(client != null && client.online ? "<color=#6bd68a>online (Claude)</color>" : "<color=#ff6b6b>offline: fallback rules</color>")}", S(14, DIM));
         GUILayout.BeginHorizontal();
