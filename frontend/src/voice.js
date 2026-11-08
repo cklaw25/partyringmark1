@@ -1,4 +1,4 @@
-// THE BROKER's voice. Browser speech for now (instant, free). ElevenLabs streaming can replace speak() later.
+// THE HOST's voice. Browser speech for now (instant, free). ElevenLabs streaming can replace speak() later.
 export class Voice {
   constructor() {
     this.synth = window.speechSynthesis;

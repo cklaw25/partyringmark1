@@ -1,4 +1,4 @@
-// THE BROKER's memory: short-term events + long-term behavioural profile.
+// THE HOST's memory: short-term events + long-term behavioural profile.
 // All plain code (fast path). It persists across captures within a game.
 
 export class BrokerMemory {
@@ -12,9 +12,9 @@ export class BrokerMemory {
     this.runTime = 0;
     this.hides = 0;
     this.throws = 0;
-    this.distractionsCaught = 0;  // times the BROKER investigated a throw and found nobody
-    this.distractionsWorked = 0;  // times a throw pulled the BROKER away and the player was not caught
-    this.noiseTrust = 1.0;        // how much the BROKER believes noises = the player
+    this.distractionsCaught = 0;  // times THE HOST investigated a throw and found nobody
+    this.distractionsWorked = 0;  // times a throw pulled THE HOST away and the player was not caught
+    this.noiseTrust = 1.0;        // how much THE HOST believes noises = the player
     this.captures = [];           // {x,y,zone,how,t}
     this.lastSeen = null;         // {x,y,t}
     this.sightings = 0;
@@ -58,7 +58,7 @@ export class BrokerMemory {
     };
   }
 
-  // the deception mechanic: every throw the BROKER falls for lowers its trust in noises
+  // the deception mechanic: every throw THE HOST falls for lowers its trust in noises
   onDistractionFound() {
     this.distractionsCaught++;
     this.noiseTrust = Math.max(0.2, this.noiseTrust - 0.2);

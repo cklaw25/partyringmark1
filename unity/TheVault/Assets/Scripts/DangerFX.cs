@@ -1,11 +1,11 @@
 // Camera image effect driving Resources/VaultDanger.shader (built-in pipeline OnRenderImage).
-// VaultGame sets danger (0..1, how close THE BROKER is), pulse (heartbeat) and flash (spotted).
+// VaultGame sets danger (0..1, how close THE HOST is), pulse (heartbeat) and flash (spotted).
 using UnityEngine;
 
 [RequireComponent(typeof(Camera))]
 public class DangerFX : MonoBehaviour
 {
-    [Range(0, 1)] public float danger, pulse, flash;
+    [Range(0, 1)] public float danger, pulse, flash, wake; // wake: blur while waking up
     public float grain = 0.045f, vignette = 0.35f;
     public bool reduceEffects; // tones down blur/fringe (and the zoom, applied by the player)
     Material mat;
@@ -27,6 +27,7 @@ public class DangerFX : MonoBehaviour
         mat.SetFloat("_Flash", flash);
         mat.SetFloat("_Grain", grain);
         mat.SetFloat("_Vig", vignette);
+        mat.SetFloat("_Wake", wake * (reduceEffects ? 0.5f : 1f));
         Graphics.Blit(src, dst, mat);
     }
 }

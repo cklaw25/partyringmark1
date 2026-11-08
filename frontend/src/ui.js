@@ -1,4 +1,4 @@
-// The explainable-AI panel ("THE BROKER: LIVE AGENT STATUS") + the post-mortem screen.
+// The explainable-AI panel ("THE HOST: LIVE AGENT STATUS") + the post-mortem screen.
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
@@ -53,12 +53,12 @@ export function showPostMortem(won, mem, elapsed, onRestart) {
   const deception = mem.throws ? Math.round(100 * (mem.throws - mem.distractionsCaught) / mem.throws) : 0;
   const key = mem.log.filter(e => ['player_spotted', 'player_captured', 'item_collected', 'power_restored', 'player_hiding', 'distraction_detected', 'broker_decision', 'player_escaped', 'game_over'].includes(e.event));
   const tl = key.map(e => e.event === 'broker_decision'
-    ? `<div><span class="t">${e.t}s</span> <b style="color:#e04848">BROKER → ${esc(e.action)}${e.target ? ' ' + esc(e.target) : ''}</b> <span class="dim">because ${esc(e.reason || '')}; outcome: ${esc(e.outcome)}</span></div>`
+    ? `<div><span class="t">${e.t}s</span> <b style="color:#e04848">HOST → ${esc(e.action)}${e.target ? ' ' + esc(e.target) : ''}</b> <span class="dim">because ${esc(e.reason || '')}; outcome: ${esc(e.outcome)}</span></div>`
     : `<div><span class="t">${e.t}s</span> ${esc(describe(e))}</div>`).join('');
   const html = `<div class="card">
     <h1>${won ? 'ESCAPED' : 'CAPTURED'}: INCIDENT POST-MORTEM</h1>
-    <p class="tag">${won ? 'You got out. THE BROKER has filed a report.' : 'THE BROKER has filed a report on how it beat you.'}</p>
-    <p><b>Survival time:</b> ${Math.round(elapsed)} s · <b>Captures:</b> ${p.capture_count} · <b>Your playstyle:</b> ${p.playstyle} · <b>Deception score:</b> ${deception}% · <b>BROKER decisions that worked:</b> ${good}/${decisions.length}</p>
+    <p class="tag">${won ? 'You got out. THE HOST has filed a report.' : 'THE HOST has filed a report on how it beat you.'}</p>
+    <p><b>Survival time:</b> ${Math.round(elapsed)} s · <b>Captures:</b> ${p.capture_count} · <b>Your playstyle:</b> ${p.playstyle} · <b>Deception score:</b> ${deception}% · <b>HOST decisions that worked:</b> ${good}/${decisions.length}</p>
     <p><b>What it learned about you:</b> runs ${Math.round(p.running_frequency * 100)}% of the time · favourite zone ${p.preferred_zone || '-'} · favourite door ${p.preferred_door || '-'} · favourite locker ${p.favourite_locker || '-'} · trust in your noises ended at ${Math.round(p.noise_trust * 100)}%</p>
     <h3>Incident timeline</h3>
     <div class="tl">${tl}</div>

@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 
 public class Door { public string id; public int x, y; public bool closed; public string kind; public string zone; public string room; }
-// kinds: "door" (BROKER can seal), "shutter" (BROKER can open), "gate" (escape-room lockdown, engine only), "blast" (central exit, engine only)
+// kinds: "door" (HOST can seal), "shutter" (HOST can open), "gate" (escape-room lockdown, engine only), "blast" (central exit, engine only)
 public class Locker { public string id; public int x, y; public string zone; }
 public class Item { public string type; public int x, y; }
 public class Room { public string name; public int x, y, w, h, cx, cy; }
@@ -155,7 +155,7 @@ public class VaultMaze
             picked.Add(c);
         }
         foreach (var p in picked) AddDoor(p.x, p.y, "door", false);
-        // 5) shutters: walls the BROKER can open
+        // 5) shutters: walls THE HOST can open
         var sc = new List<Tile>();
         for (int y = 1; y < h - 1; y++) for (int x = 1; x < w - 1; x++)
             if (grid[y, x] == 1 && IsEdge(x, y)) sc.Add(new Tile(x, y));
@@ -301,7 +301,7 @@ public class VaultMaze
         return true;
     }
 
-    // engineDoorsOpen: treat escape-room gates / blast doors as open (they open by game rules, the BROKER can't hold them shut)
+    // engineDoorsOpen: treat escape-room gates / blast doors as open (they open by game rules, THE HOST can't hold them shut)
     public HashSet<int> Reachable(int sx, int sy, string extraClosed = null, bool engineDoorsOpen = false)
     {
         var seen = new HashSet<int> { Key(sx, sy) }; var q = new Queue<Tile>(); q.Enqueue(new Tile(sx, sy));

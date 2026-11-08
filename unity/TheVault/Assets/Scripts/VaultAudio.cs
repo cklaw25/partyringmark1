@@ -76,7 +76,7 @@ public class VaultAudio : MonoBehaviour
     {
         if (listener == null) return;
         float dt = Time.deltaTime;
-        // heartbeat: starts quiet and slow, gets loud and fast as THE BROKER closes in
+        // heartbeat: starts quiet and slow, gets loud and fast as THE HOST closes in
         if (danger > 0.03f && Time.time >= nextBeat)
         {
             float bpm = Mathf.Lerp(60f, 160f, danger);

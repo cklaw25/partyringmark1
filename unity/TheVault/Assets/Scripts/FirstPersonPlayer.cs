@@ -43,8 +43,10 @@ public class FirstPersonPlayer : MonoBehaviour
     // read by VaultGame after Tick: landing makes noise
     public bool landedThisFrame, jumpedThisFrame; public float landSpeed;
     public System.Action onStep; // fires on each footstep (VaultGame plays the footstep sound)
-    // set by VaultGame: danger zoom, flashlight strength and how much it stutters when THE BROKER is near
+    // set by VaultGame: danger zoom, flashlight strength and how much it stutters when THE HOST is near
     public float fovOffset, flashBase = 3.8f, flashFlicker;
+    // waking up: look around but not move yet; the view starts low and tilted and rises
+    public bool lookOnly; public float wakeDrop, wakeRoll;
     Light nearLight; Quaternion flashRot = Quaternion.identity;
 
     float coyote, buffer, bobPhase, bobBlend, landDip, landDipVel, roll, fovKick, shake, eyeY = 0.65f, peakSpeed;
@@ -89,10 +91,11 @@ public class FirstPersonPlayer : MonoBehaviour
             pitch = Mathf.Clamp(pitch - Input.GetAxisRaw("Mouse Y") * mouseSens, -80, 80);
             transform.rotation = Quaternion.Euler(0, yaw, 0);
         }
-        if (hidden || frozen)
+        if (hidden || frozen || lookOnly)
         {
             moving = running = crouched = false; velocity = Vector3.zero; state = MoveState.Ground; buffer = 0;
-            cam.transform.localRotation = Quaternion.Euler(pitch, 0, 0);
+            if (lookOnly && !hidden) { eyeY = 0.65f; cam.transform.localPosition = new Vector3(0, eyeY - wakeDrop, 0); }
+            cam.transform.localRotation = Quaternion.Euler(pitch, 0, lookOnly ? wakeRoll : 0);
             cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, baseFov + fovOffset, 10f * dt);
             UpdateFlashlight(dt);
             return;
@@ -248,8 +251,8 @@ public class FirstPersonPlayer : MonoBehaviour
         float targetRoll = (-input.x * 2f + (Sliding ? 4f : 0f)) * k;
         roll = Mathf.Lerp(roll, targetRoll, 8f * dt);
 
-        cam.transform.localPosition = new Vector3(bobX, eyeY + bobY + landDip * k, 0) + shakeOff;
-        cam.transform.localRotation = Quaternion.Euler(pitch, 0, roll);
+        cam.transform.localPosition = new Vector3(bobX, eyeY + bobY + landDip * k - wakeDrop, 0) + shakeOff;
+        cam.transform.localRotation = Quaternion.Euler(pitch, 0, roll + wakeRoll);
 
         // FOV: widens with speed so it reads on screen, plus a kick on each slide
         fovKick = Mathf.MoveTowards(fovKick, 0, dt * 8f);

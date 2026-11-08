@@ -318,7 +318,7 @@ public static class TexGen
         return o;
     }
 
-    // roller shutter slats (BROKER doors)
+    // roller shutter slats (HOST doors)
     public static Img Slats(out float[] height)
     {
         const int W = 128, H = 256; var img = new Img(W, H, new C4(0, 0, 0)); height = new float[W * H];
@@ -336,7 +336,7 @@ public static class TexGen
         return img;
     }
 
-    // corrugated rusty panel (walls the BROKER can open)
+    // corrugated rusty panel (walls THE HOST can open)
     public static Img Corrugated(out float[] height)
     {
         const int W = 128, H = 256; var img = new Img(W, H, new C4(0, 0, 0)); height = new float[W * H];
@@ -503,6 +503,26 @@ public static class TexGen
     {
         var img = Clear(32, 32);
         for (int y = 0; y < 32; y++) for (int x = 0; x < 32; x++) { float r = (float)Math.Sqrt((x - 15.5f) * (x - 15.5f) + (y - 15.5f) * (y - 15.5f)) / 16f; img[x, y] = new C4(1, 1, 1, (float)Math.Pow(Clamp01(1 - r), 2)); }
+        return img;
+    }
+
+    // THE HOST's eye: a hot red ring around a dark-red glowing lens with a pinpoint centre; soft glow fading out past the ring.
+    // Used as both albedo and emission map, alpha cut to a disc.
+    public static Img HostEye()
+    {
+        const int N = 128; var img = Clear(N, N);
+        for (int y = 0; y < N; y++) for (int x = 0; x < N; x++)
+        {
+            float r = (float)Math.Sqrt((x - 63.5f) * (x - 63.5f) + (y - 63.5f) * (y - 63.5f)) / 64f;
+            float ring = (float)Math.Exp(-Math.Pow((r - 0.68f) / 0.075f, 2));          // the bright ring
+            float core = (float)Math.Exp(-Math.Pow((r - 0.68f) / 0.025f, 2));          // white-hot line inside it
+            float lens = Smooth(0.6f, 0.0f, r) * 0.35f + 0.12f;                         // dark red lens, brighter toward the middle
+            float pin = (float)Math.Exp(-r * r / 0.006f);                               // pinpoint pupil
+            float halo = r > 0.68f ? (float)Math.Exp(-(r - 0.68f) / 0.09f) * 0.6f : 0;
+            float red = Clamp01(lens + ring + pin + halo), gb = Clamp01(core * 0.75f + pin * 0.55f + ring * 0.12f);
+            float a = r < 0.8f ? 1f : Clamp01(halo * 1.6f) * Smooth(1f, 0.85f, r);
+            img[x, y] = new C4(red, gb * 0.8f, gb * 0.7f, a);
+        }
         return img;
     }
 

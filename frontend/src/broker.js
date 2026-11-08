@@ -1,5 +1,5 @@
-// THE BROKER - the fast path. Moves, sees, hears and reacts every frame with plain code.
-// The slow path (Claude strategist) only sets the BROKER's strategy + maze changes; it never drives a frame.
+// THE HOST - the fast path. Moves, sees, hears and reacts every frame with plain code.
+// The slow path (Claude strategist) only sets THE HOST's strategy + maze changes; it never drives a frame.
 
 import { TILE } from './maze.js';
 

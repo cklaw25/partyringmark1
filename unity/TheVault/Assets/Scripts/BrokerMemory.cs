@@ -1,4 +1,4 @@
-// THE BROKER's memory: short-term events + long-term behavioural profile. Persists across captures.
+// THE HOST's memory: short-term events + long-term behavioural profile. Persists across captures.
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;

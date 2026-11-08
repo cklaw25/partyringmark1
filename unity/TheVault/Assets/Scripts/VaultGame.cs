@@ -1,5 +1,5 @@
-// THE VAULT: OUTBREAK - game manager. Builds the whole 3D world from code at Play (no scene setup needed),
-// runs the game loop (3 escape rooms, cameras, 3 days, central exit), validates THE BROKER's strategic
+// THE LIVING LABYRINTH - game manager. Builds the whole 3D world from code at Play (no scene setup needed),
+// runs the game loop (3 escape rooms, cameras, 3 days, central exit), validates THE HOST's strategic
 // decisions, and draws the live agent panel, minimap, puzzles and post-mortem.
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -23,7 +23,7 @@ public partial class VaultGame : MonoBehaviour
     List<string> brokerClosed = new List<string>();
     (DecisionRecord rec, float at, int sightings, int captures, string door)? pending;
     bool started, over, won, showPanel = true, revealBroker, puzzleOpen, centralOpen;
-    string subtitle = "", toast = "", seedText = "1337"; float toastUntil, dayBannerUntil;
+    string subtitle = "", toast = "", seedText = "1337"; float toastUntil;
     Tile lastTile;
     float GameSeconds => demoMode ? demoSeconds : fullSeconds;
     readonly List<float> fastSamples = new List<float>();
@@ -35,7 +35,7 @@ public partial class VaultGame : MonoBehaviour
     readonly List<Light> roomLights = new List<Light>();
     readonly List<Transform> signs = new List<Transform>();
     Texture2D minimap; float minimapTimer; Vector2 pmScroll, panelScroll; float runNoise;
-    // atmosphere: sound, screen effects, how close THE BROKER is
+    // atmosphere: sound, screen effects, how close THE HOST is
     VaultAudio sfx; DangerFX fx;
     float danger, dangerTimer, dangerTarget, brokerStepAcc, nextGrowl; Vector3 brokerPrev; string brokerPrevState = "PATROL";
 
@@ -84,17 +84,10 @@ public partial class VaultGame : MonoBehaviour
             sfx.Play(concrete ? "step_concrete" : "step_carpet", null, player.crouched ? 0.15f : player.running ? 0.7f : 0.4f, 0.08f);
         };
         EscapeRoom.Sfx = n => sfx.Play(n, null, 0.6f);
-        var bgo = BuildBrokerBody(); broker = bgo.AddComponent<BrokerAgent>(); broker.Init(this); brokerPrev = broker.transform.position;
+        var bgo = BuildBrokerBody(); broker = bgo.AddComponent<BrokerAgent>(); broker.Init(this); brokerPrev = broker.transform.position; bgo.GetComponent<HostBody>().Init(broker, player);
         lastTile = player.T;
         minimap = new Texture2D(maze.w, maze.h) { filterMode = FilterMode.Point };
         Emit("game_started", ("seed", (int)seed), ("mode", demoMode ? "demo" : "full"));
-    }
-
-    Material Mat(Color c, Color? emission = null)
-    {
-        var m = new Material(Shader.Find("Standard")); m.color = c; m.SetFloat("_Glossiness", 0.15f);
-        if (emission.HasValue) { m.EnableKeyword("_EMISSION"); m.SetColor("_EmissionColor", emission.Value); }
-        return m;
     }
 
     GameObject Box(string name, Vector3 pos, Vector3 size, Material m, bool collider = true)
@@ -114,22 +107,7 @@ public partial class VaultGame : MonoBehaviour
         return tm;
     }
 
-    GameObject BuildBrokerBody()
-    {
-        var g = new GameObject("THE_BROKER"); g.transform.SetParent(transform);
-        var body = GameObject.CreatePrimitive(PrimitiveType.Capsule); body.transform.SetParent(g.transform, false); Destroy(body.GetComponent<Collider>());
-        body.transform.localPosition = Vector3.up * 1.1f; body.transform.localScale = new Vector3(0.8f, 1.1f, 0.8f);
-        body.GetComponent<Renderer>().sharedMaterial = Mat(new Color(0.05f, 0.05f, 0.06f));
-        var eyeM = Mat(Color.red, new Color(4f, 0f, 0f));
-        foreach (float ex in new[] { -0.17f, 0.17f })
-        {
-            var e = GameObject.CreatePrimitive(PrimitiveType.Sphere); e.transform.SetParent(g.transform, false); Destroy(e.GetComponent<Collider>());
-            e.transform.localPosition = new Vector3(ex, 1.75f, 0.33f); e.transform.localScale = Vector3.one * 0.13f; e.GetComponent<Renderer>().sharedMaterial = eyeM;
-        }
-        var li = new GameObject("eyeLight").AddComponent<Light>(); li.transform.SetParent(g.transform, false); li.transform.localPosition = new Vector3(0, 1.75f, 0.6f);
-        li.type = LightType.Point; li.range = 6; li.intensity = 2.5f; li.color = Color.red;
-        return g;
-    }
+    GameObject BuildBrokerBody() => HostBody.Build(transform).gameObject; // the robot (HostBody.cs)
 
     // ---------- events / voice ----------
     public void Emit(string name, params (string k, object v)[] kv)
@@ -336,7 +314,7 @@ public partial class VaultGame : MonoBehaviour
         var ar = ActiveRoom;
         if (ar != null && !ar.breached && Mathf.Abs(ar.room.cx - pt.x) + Mathf.Abs(ar.room.cy - pt.y) <= 1)
         {
-            puzzleOpen = true; player.frozen = true; Cursor.lockState = CursorLockMode.None; Cursor.visible = true; return;
+            puzzleOpen = true; player.frozen = true; Cursor.lockState = CursorLockMode.None; Cursor.visible = true; ar.OpenTerminal(); return;
         }
         var locker = maze.lockers.FirstOrDefault(l => Mathf.Abs(l.x - pt.x) + Mathf.Abs(l.y - pt.y) <= 1);
         if (locker != null)
@@ -362,7 +340,7 @@ public partial class VaultGame : MonoBehaviour
         for (int i = 0; i < 7; i++) { int nx = x + f.x, ny = y + f.y; if (!maze.Walkable(nx, ny)) break; x = nx; y = ny; }
         mem.throws++;
         Emit("object_thrown", ("landing_zone", maze.ZoneOf(x, y)), ("thrown_from_zone", maze.ZoneOf(pt.x, pt.y)));
-        // the bottle flies in an arc; THE BROKER hears it where (and when) it smashes
+        // the bottle flies in an arc; THE HOST hears it where (and when) it smashes
         var ct = player.cam.transform;
         StartCoroutine(ThrowFx(ct.position + ct.forward * 0.4f + ct.right * 0.2f - ct.up * 0.15f, World(new Tile(x, y)) + new Vector3(Random.Range(-0.4f, 0.4f), 0.02f, Random.Range(-0.4f, 0.4f)),
             new NoiseEvent { x = x, y = y, radius = 12, kind = "throw", fromX = pt.x, fromY = pt.y }));
@@ -387,7 +365,7 @@ public partial class VaultGame : MonoBehaviour
         foreach (var r in rooms.Values) if (r.active || r.breached) { r.ResetAfterCapture(); SetGates(r, false); }
         if (puzzleOpen) ClosePuzzle();
         Say(day == 2 ? "Day two. I remember exactly how I caught you." : "Day three. Your last day. I have learned everything I need.", false);
-        dayBannerUntil = Time.time + 3f;
+        BeginWake(false);
         if (day >= 3) foreach (var c in cams) { c.rangeTiles += 1; c.speed *= 1.3f; }
         player.hidden = false; player.locker = null;
         player.Teleport(World(maze.start) + Vector3.up * 1f); player.Look(90);
@@ -418,7 +396,8 @@ public partial class VaultGame : MonoBehaviour
     // ---------- loop ----------
     void Update()
     {
-        if (!started || over) { if (Input.GetKeyDown(KeyCode.Tab)) showPanel = !showPanel; return; }
+        if (!started || over) { if (!introDone) TickIntro(); else if (Input.GetKeyDown(KeyCode.Tab)) showPanel = !showPanel; return; }
+        if (TickWake(Mathf.Min(0.05f, Time.deltaTime))) return;
         var sw = Stopwatch.StartNew();
         float dt = Mathf.Min(0.05f, Time.deltaTime); elapsed += dt;
         if (Input.GetKeyDown(KeyCode.Escape)) { if (puzzleOpen) ClosePuzzle(); Cursor.lockState = CursorLockMode.None; Cursor.visible = true; }
@@ -442,7 +421,7 @@ public partial class VaultGame : MonoBehaviour
         runNoise -= dt;
         if (player.running && runNoise <= 0) { runNoise = 0.7f; broker.Hear(new NoiseEvent { x = pt.x, y = pt.y, radius = 6, kind = "run" }); if (Random.value < 0.15f) Emit("player_running", ("zone", maze.ZoneOf(pt.x, pt.y))); }
 
-        // cameras: the BROKER's eyes in the maze
+        // cameras: THE HOST's eyes in the maze
         foreach (var c in cams)
         {
             if (Time.time < c.cooldownUntil) continue;
@@ -476,10 +455,10 @@ public partial class VaultGame : MonoBehaviour
         sw.Stop(); fastSamples.Add((float)sw.Elapsed.TotalMilliseconds); if (fastSamples.Count > 60) fastSamples.RemoveAt(0);
     }
 
-    // ---------- atmosphere: heartbeat, danger screen, BROKER footsteps ----------
+    // ---------- atmosphere: heartbeat, danger screen, HOST footsteps ----------
     void TickAtmosphere(float dt, bool alarm)
     {
-        // how close THE BROKER is, by walking distance (a wall between you and a long way round doesn't count)
+        // how close THE HOST is, by walking distance (a wall between you and a long way round doesn't count)
         dangerTimer -= dt;
         if (dangerTimer <= 0)
         {
@@ -523,6 +502,7 @@ public partial class VaultGame : MonoBehaviour
     void OnGUI()
     {
         if (maze == null) return;
+        if (!introDone) { DrawIntro(); return; }
         if (!started) { StartScreen(); return; }
         if (over) { PostMortem(); return; }
         float sw = Screen.width, sh = Screen.height;
@@ -538,35 +518,25 @@ public partial class VaultGame : MonoBehaviour
         string threat = broker.Threat; string tc = threat == "ACTIVE HUNT" ? "#ff4040" : threat == "INVESTIGATION" ? "#ffb040" : "#6bd68a";
         string roomsTxt = string.Join(" · ", rooms.Values.Select(r => $"{r.name} {(r.done ? "✓" : r.active ? $"[{r.locks}/3]" : "✗")}"));
         float y = 6;
-        y = WrapLabel(new Rect(12, y, pw - 24, 0), $"<b><color=#e04848>THE VAULT</color></b>  <b>DAY {day}/3</b>  <color={tc}><b>{threat}</b></color>  {(int)(left / 60)}:{(int)(left % 60):00}  rooms: {roomsTxt}  bottles {bottles}{(player.crouched ? "  <color=#7fb3d5>CROUCHING</color>" : "")}", S(Fs(16), Color.white));
+        y = WrapLabel(new Rect(12, y, pw - 24, 0), $"<b><color=#e04848>THE LIVING LABYRINTH</color></b>  <b>DAY {day}/3</b>  <color={tc}><b>{threat}</b></color>  {(int)(left / 60)}:{(int)(left % 60):00}  rooms: {roomsTxt}  bottles {bottles}{(player.crouched ? "  <color=#7fb3d5>CROUCHING</color>" : "")}", S(Fs(16), Color.white));
         y = WrapLabel(new Rect(12, y, pw - 24, 0), "WASD move · SHIFT run (loud) · SPACE jump · C crouch (hold) / slide (tap while sprinting or mid-air) · E interact/hide/terminal · CLICK throw · TAB panel · V hunter on map · ESC mouse", S(Fs(12), DIM));
         var ar = ActiveRoom;
         y = DrawObjective(pw, y + 4, ar);
         if (ar != null && !ar.breached && !puzzleOpen)
             WrapLabel(new Rect(12, y, pw - 24, 0), $"<b>{ar.title} LOCKDOWN</b>  locks {new string('■', ar.locks)}{new string('□', 3 - ar.locks)}  {Mathf.CeilToInt(ar.timer)} s", S(Fs(17), Color.yellow, false, TextAnchor.MiddleCenter));
-        var subS = S(Fs(20), RED, false, TextAnchor.MiddleCenter); string subT = "<b>THE BROKER:</b> " + subtitle;
+        var subS = S(Fs(20), RED, false, TextAnchor.MiddleCenter); string subT = "<b>THE HOST:</b> " + subtitle;
         float subH = subS.CalcHeight(new GUIContent(subT), pw * 0.9f);
         GUI.Label(new Rect(pw * 0.05f, sh - subH - 16, pw * 0.9f, subH), subT, subS);
         if (Time.time < toastUntil) { var ts = S(Fs(16), Color.yellow, false, TextAnchor.MiddleCenter); float th = ts.CalcHeight(new GUIContent(toast), pw * 0.9f); GUI.Label(new Rect(pw * 0.05f, sh - subH - th - 24, pw * 0.9f, th), toast, ts); }
-        if (Time.time < dayBannerUntil)
-        {
-            GUI.color = new Color(0, 0, 0, Mathf.Clamp01(dayBannerUntil - Time.time)); GUI.DrawTexture(new Rect(0, 0, sw, sh), Texture2D.whiteTexture); GUI.color = Color.white;
-            GUI.Label(new Rect(0, sh / 2 - 60, sw, 120), $"<b>DAY {day} OF 3</b>\n<size=18>You wake up in containment. THE BROKER remembers you.</size>", S(48, RED, false, TextAnchor.MiddleCenter));
-        }
         DrawMinimap();
         if (showPanel) DrawPanel();
         else
         {
-            if (GUI.Button(new Rect(sw - 190, 8, 180, 28), "◂ BROKER panel (TAB)")) showPanel = true;
+            var pb = new GUIStyle(GUI.skin.button) { fontSize = Fs(14) };
+            if (GUI.Button(new Rect(sw - 200 * ui - 10, 8, 200 * ui, 32 * ui), "◂ HOST panel (TAB)", pb)) showPanel = true;
         }
-        if (puzzleOpen && ar != null)
-        {
-            float w = Mathf.Min(560, pw - 40), h = Mathf.Min(440, sh - 40), x = (pw - w) / 2, py = (sh - h) / 2;
-            GUI.color = new Color(0.02f, 0.03f, 0.04f, 0.95f); GUI.DrawTexture(new Rect(x - 10, py - 10, w + 20, h + 20), Texture2D.whiteTexture); GUI.color = Color.white;
-            int res = ar.DrawPuzzle(new Rect(x, py, w, h), S(Fs(18), RED), S(Fs(14), Color.white));
-            if (res == 1) RoomMistake(ar, ar.name == "power" ? "wrong breaker" : ar.name == "surveillance" ? "wrong code" : "missed the lever");
-            else if (res == 2) RoomSolved(ar);
-        }
+        if (puzzleOpen && ar != null) DrawPuzzlePanel(ar, pw, sh);
+        DrawWake();
     }
 
     // ---------- objective guidance: always tell the player what to do next + where ----------
@@ -612,44 +582,13 @@ public partial class VaultGame : MonoBehaviour
     Tile? objectiveTile;
 
     // layout helpers: the HUD scales with the window and never sits behind the side panel
-    float UiScale => Mathf.Clamp(Mathf.Min(Screen.width / 1600f, Screen.height / 900f), 0.65f, 1.3f);
+    float UiScale => Mathf.Clamp(Mathf.Min(Screen.width / 1600f, Screen.height / 900f), 0.7f, 1.8f);
     int Fs(int baseSize) => Mathf.Max(10, Mathf.RoundToInt(baseSize * UiScale));
-    float PanelW => Mathf.Clamp(Screen.width * 0.3f, 260, 420);
+    float PanelW => Mathf.Clamp(Screen.width * 0.28f, 260, 420 * Mathf.Max(1f, UiScale));
     float PlayW => Screen.width - (showPanel ? PanelW + 20 : 0);
     float WrapLabel(Rect r, string text, GUIStyle st)
     {
         float h = st.CalcHeight(new GUIContent(text), r.width); GUI.Label(new Rect(r.x, r.y, r.width, h), text, st); return r.y + h;
-    }
-
-    void StartScreen()
-    {
-        float w = Mathf.Min(780, Screen.width - 40), h = Mathf.Min(520, Screen.height - 40), x = (Screen.width - w) / 2, y = (Screen.height - h) / 2;
-        GUI.color = new Color(0, 0, 0, 0.9f); GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture); GUI.color = Color.white;
-        GUILayout.BeginArea(new Rect(x, y, w, h));
-        GUILayout.Label("<b>THE VAULT: OUTBREAK</b>", S(34, RED));
-        GUILayout.Label("<i>The maze isn't just trapping you. It's learning how you escape.</i>", S(16, new Color(1f, 0.6f, 0.6f)));
-        GUILayout.Space(8);
-        GUILayout.Label("<b>HOW TO ESCAPE</b>", S(18, new Color(1f, 0.85f, 0.2f)));
-        GUILayout.Label("<b>1.</b>  Find the <b>3 puzzle rooms</b>. Follow the yellow arrow ▲", S(17, Color.white));
-        GUILayout.Label("<b>2.</b>  Solve each room's puzzle. <b>3 mistakes</b> and the door opens for the monster", S(17, Color.white));
-        GUILayout.Label("<b>3.</b>  Reach the <b>exit in the centre</b> of the maze", S(17, Color.white));
-        GUILayout.Space(4);
-        GUILayout.Label("<color=#ff6b6b><b>THE BROKER</b></color> (red eyes) hunts you and <b>learns your habits</b>. Getting caught costs 1 of your <b>3 days</b>.\nRun = fast but loud · SPACE = jump · tap C while sprinting or mid-air = slide, SPACE while sliding = hop (chain them to go faster - loudly) · C = crouch under cameras · E = hide in lockers · CLICK = throw a bottle to distract it", S(14, DIM));
-        GUILayout.Space(6);
-        GUILayout.Label($"Strategist link: {(client != null && client.online ? "<color=#6bd68a>online (Claude)</color>" : "<color=#ff6b6b>offline: fallback rules</color>")}", S(14, DIM));
-        GUILayout.BeginHorizontal();
-        GUILayout.Label("Maze seed (same seed = same maze):", S(14, DIM), GUILayout.Width(260));
-        seedText = GUILayout.TextField(seedText, GUILayout.Width(90));
-        if (GUILayout.Button("Load", GUILayout.Width(60)) && uint.TryParse(seedText, out var ns) && ns != seed) { var go = new GameObject("VAULT"); go.AddComponent<VaultGame>().seed = ns; Destroy(gameObject); }
-        demoMode = GUILayout.Toggle(demoMode, demoMode ? " Demo (7 min)" : " Full (30 min)");
-        GUILayout.EndHorizontal();
-        GUILayout.Space(10);
-        if (GUILayout.Button("ENTER THE VAULT", GUILayout.Height(44)))
-        {
-            started = true; Cursor.lockState = CursorLockMode.Locked; Cursor.visible = false;
-            Say("Welcome to the Vault. I will be studying you.", false);
-        }
-        GUILayout.EndArea();
     }
 
     void DrawMinimap()
@@ -689,7 +628,7 @@ public partial class VaultGame : MonoBehaviour
         GUILayout.BeginArea(new Rect(x + 10, 16, w - 20, Screen.height - 32));
         var h = S(Fs(13), BLUE, true); var b = S(Fs(13), Color.white);
         GUILayout.BeginHorizontal();
-        GUILayout.Label("<b>THE BROKER: LIVE AGENT STATUS</b>", S(Fs(15), RED));
+        GUILayout.Label("<b>THE HOST: LIVE AGENT STATUS</b>", S(Fs(15), RED));
         if (GUILayout.Button("✕", GUILayout.Width(28), GUILayout.Height(24))) showPanel = false;
         GUILayout.EndHorizontal();
         panelScroll = GUILayout.BeginScrollView(panelScroll);
@@ -748,28 +687,8 @@ public partial class VaultGame : MonoBehaviour
             case "central_exit_unlocked": return "<color=#6bd68a>central exit unlocked</color>";
             case "player_running": return $"running in {Get(e, "zone")}";
             case "noise": return $"heard a real-world noise ({Get(e, "source")})";
-            case "broker_decision": var r = (DecisionRecord)e.data["rec"]; return $"<b><color=#e04848>BROKER → {r.action}{(r.target != null ? " " + r.target : "")}</color></b> <color=#999>because {r.reason}; outcome: {r.outcome}</color>";
+            case "broker_decision": var r = (DecisionRecord)e.data["rec"]; return $"<b><color=#e04848>HOST → {r.action}{(r.target != null ? " " + r.target : "")}</color></b> <color=#999>because {r.reason}; outcome: {r.outcome}</color>";
             default: return e.name;
         }
-    }
-
-    void PostMortem()
-    {
-        float w = Mathf.Min(900, Screen.width - 40), h = Screen.height - 60, x = (Screen.width - w) / 2;
-        GUI.color = new Color(0, 0, 0, 0.92f); GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture); GUI.color = Color.white;
-        GUILayout.BeginArea(new Rect(x, 30, w, h));
-        GUILayout.Label($"<b>{(won ? "ESCAPE SUCCESSFUL: YOU OUTSMARTED THE BROKER" : "CAPTURED")}: INCIDENT POST-MORTEM</b>", S(26, RED));
-        GUILayout.Label(won ? "You got out. THE BROKER has filed a report." : "THE BROKER has filed a report on how it beat you.", S(15, new Color(1f, 0.6f, 0.6f)));
-        int good = mem.decisions.Count(d => d.outcome.StartsWith("SUCCESS") || d.outcome.StartsWith("partial"));
-        int deception = mem.throws > 0 ? Mathf.RoundToInt(100f * (mem.throws - mem.distractionsCaught) / mem.throws) : 0;
-        GUILayout.Label($"<b>Escape day</b> {day} · <b>Captures</b> {mem.captures.Count} · <b>Rooms completed</b> {RoomsDone}/3 · <b>Puzzle mistakes</b> {rooms.Values.Sum(r => r.mistakes)} · <b>Camera spots</b> {cams.Sum(c => c.spots)} · <b>Deception score</b> {deception}% · <b>BROKER decisions that worked</b> {good}/{mem.decisions.Count}", S(15, Color.white));
-        GUILayout.Label($"<b>What it learned about you:</b> playstyle {mem.Playstyle} · runs {Mathf.RoundToInt(mem.RunRatio * 100)}% of the time · favourite zone {mem.PreferredZone ?? "-"} · favourite door {mem.PreferredDoor ?? "-"} · favourite locker {mem.FavouriteLocker ?? "-"} · trust in your noises ended at {Mathf.RoundToInt(mem.noiseTrust * 100)}%", S(15, Color.white));
-        GUILayout.Label("INCIDENT TIMELINE", S(14, BLUE, true));
-        pmScroll = GUILayout.BeginScrollView(pmScroll, GUILayout.Height(h - 260));
-        var keyEvents = new[] { "player_spotted", "camera_spotted", "player_captured", "room_entered", "puzzle_mistake", "room_breached", "room_completed", "central_exit_unlocked", "player_hiding", "distraction_detected", "broker_decision", "player_escaped", "game_over" };
-        foreach (var e in mem.log.Where(e => keyEvents.Contains(e.name))) GUILayout.Label($"<color=#888>{Mathf.RoundToInt(e.t)}s</color>  {Describe(e)}", S(13, Color.white));
-        GUILayout.EndScrollView();
-        if (GUILayout.Button("PLAY AGAIN (same maze)", GUILayout.Height(40))) { var go = new GameObject("VAULT"); go.AddComponent<VaultGame>().seed = seed; Destroy(gameObject); }
-        GUILayout.EndArea();
     }
 }

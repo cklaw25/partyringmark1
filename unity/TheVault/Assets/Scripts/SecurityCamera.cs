@@ -1,4 +1,4 @@
-// Visible sweeping security camera with a light cone and a faint visible beam. THE BROKER only learns your position
+// Visible sweeping security camera with a light cone and a faint visible beam. THE HOST only learns your position
 // from these, its hunter's own eyes, sounds and escape-room alerts. Crouching gets you under the cone.
 using UnityEngine;
 using A = VaultArt;

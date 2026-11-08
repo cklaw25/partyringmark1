@@ -86,7 +86,7 @@ export class Maze {
       visited.add(nx + ',' + ny);
       stack.push([nx, ny]);
     }
-    // 2) Braid: knock out extra walls so there are loops (the BROKER can redirect without trapping)
+    // 2) Braid: knock out extra walls so there are loops (THE HOST can redirect without trapping)
     for (let y = 1; y < this.h - 1; y++) for (let x = 1; x < this.w - 1; x++) {
       if (this.grid[y][x] !== 1) continue;
       const horiz = x % 2 === 0 && y % 2 === 1; // wall between two cells left/right
@@ -124,7 +124,7 @@ export class Maze {
     }
     picked.forEach((p, i) => this.addDoor(p.x, p.y, 'door', false));
 
-    // 5) Shutters = walls between two cells that the BROKER can OPEN as alternative passages
+    // 5) Shutters = walls between two cells that THE HOST can OPEN as alternative passages
     const shutterCands = [];
     for (let y = 1; y < this.h - 1; y++) for (let x = 1; x < this.w - 1; x++) {
       if (this.grid[y][x] !== 1) continue;
@@ -223,7 +223,7 @@ export class Maze {
     return targets.every(t => reach.has(this.key(t.x, t.y)));
   }
 
-  // A* on the tile grid. ignoreDoors=true lets the BROKER's patrol plan "through" doors it controls.
+  // A* on the tile grid. ignoreDoors=true lets THE HOST's patrol plan "through" doors it controls.
   path(sx, sy, tx, ty, ignoreDoors = false) {
     if (!this.inBounds(tx, ty)) return null;
     const start = this.key(sx, sy), goal = this.key(tx, ty);

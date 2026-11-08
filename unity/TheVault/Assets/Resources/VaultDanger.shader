@@ -1,5 +1,5 @@
-// Full-screen effect: film grain + light vignette always; as THE BROKER closes in the edges darken then turn red,
-// pulse with the heartbeat, blur toward the edges, fringe and lose colour.
+// Full-screen effect: film grain + light vignette always; as THE HOST closes in the edges darken then turn red,
+// pulse with the heartbeat, blur toward the edges, fringe and lose colour. _Wake adds a heavy all-over blur for waking up.
 Shader "Hidden/VaultDanger"
 {
     Properties { _MainTex ("", 2D) = "white" {} }
@@ -13,7 +13,7 @@ Shader "Hidden/VaultDanger"
             #pragma fragment frag
             #include "UnityCG.cginc"
             sampler2D _MainTex; float4 _MainTex_TexelSize;
-            float _Danger, _Blur, _Pulse, _Flash, _Grain, _Vig;
+            float _Danger, _Blur, _Pulse, _Flash, _Grain, _Vig, _Wake;
 
             float hash(float2 p) { return frac(sin(dot(p, float2(12.9898, 78.233))) * 43758.5453); }
 
@@ -33,6 +33,20 @@ Shader "Hidden/VaultDanger"
                 float ca = _Blur * r * 0.006;
                 col.r = lerp(col.r, tex2D(_MainTex, 0.5 + d * (1.0 + ca)).r, 0.7);
                 col.b = lerp(col.b, tex2D(_MainTex, 0.5 + d * (1.0 - ca)).b, 0.7);
+
+                // waking up: two rings of taps around each pixel, wide while groggy, gone once awake
+                if (_Wake > 0.001)
+                {
+                    float2 rad = float2(1.0 / aspect, 1.0) * _Wake * 0.035;
+                    float3 acc = col;
+                    [unroll] for (int j = 0; j < 12; j++)
+                    {
+                        float a = j * 0.5236 + (j & 1) * 0.26;
+                        float ring = (j & 1) ? 1.0 : 0.5;
+                        acc += tex2D(_MainTex, i.uv + float2(cos(a), sin(a)) * rad * ring).rgb;
+                    }
+                    col = lerp(col, acc / 13.0, saturate(_Wake * 1.5)) * (1.0 - _Wake * 0.35);
+                }
 
                 // colour drains under stress
                 float l = dot(col, float3(0.299, 0.587, 0.114));

@@ -82,7 +82,7 @@ class VaultScene extends Phaser.Scene {
     this.keys.M.on('down', () => this.micNoise());
 
     this.emitEvent({ event: 'game_started', seed: SEED, mode: FULL ? 'full' : 'demo' });
-    this.say('Welcome to the Vault. I will be studying you.', 'strategist');
+    this.say('Welcome to my labyrinth. I will be studying you.', 'strategist');
     this.updateHud();
     this.time.addEvent({ delay: 250, loop: true, callback: () => this.refreshPanel() });
   }
@@ -102,7 +102,7 @@ class VaultScene extends Phaser.Scene {
       if (this.elapsed - this.lastReflexSay < 3) return;
       this.lastReflexSay = this.elapsed;
     }
-    document.getElementById('subtitle').textContent = 'THE BROKER: ' + text;
+    document.getElementById('subtitle').textContent = 'THE HOST: ' + text;
     this.voice.speak(text, kind);
   }
 
@@ -275,7 +275,7 @@ class VaultScene extends Phaser.Scene {
     this.cameras.main.flash(300, 160, 0, 0);
     if (this.lives <= 0) { this.endGame(false); return; }
     this.say(pick(['Caught you. I will remember how.', 'Again. You are learning slower than me.']), 'strategist');
-    // respawn in a room far from the BROKER that can still reach every objective
+    // respawn in a room far from THE HOST that can still reach every objective
     const b = this.broker.tile, targets = this.objectiveTargets();
     const rooms = Object.values(m.rooms).filter(rm => {
       const reach = m.reachable(rm.cx, rm.cy);
@@ -376,7 +376,7 @@ class VaultScene extends Phaser.Scene {
       if (Math.random() < 0.15) this.emitEvent({ event: 'player_running', zone: m.zoneOf(pt.x, pt.y) });
     }
 
-    // BROKER fast path
+    // HOST fast path
     this.broker.update(dt, performance.now(), p, this.progress.power);
     if (!p.hidden && Math.hypot(this.broker.x - p.x, this.broker.y - p.y) < TILE * 0.6) this.capture('caught in ' + m.zoneOf(pt.x, pt.y));
 

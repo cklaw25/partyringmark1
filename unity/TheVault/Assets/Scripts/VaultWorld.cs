@@ -21,7 +21,7 @@ public partial class VaultGame
     Transform staticRoot, dynRoot; Light beacon; bool lightsPowered, chevronsLit; int shardCount;
 
     struct Face { public Tile t; public Vector3 center, normal, along; public bool room; }
-    static readonly string[] GRAFFITI = { "IT LEARNS", "DONT RUN", "IT HEARS YOU", "IT REMEMBERS", "NOT THE LOCKERS", "3 DAYS", "TRUST NO NOISE", "IT KNOWS", "KEEP MOVING", "HELP", "|||| |||| ||", "WHO IS THE BROKER?" };
+    static readonly string[] GRAFFITI = { "IT LEARNS", "DONT RUN", "IT HEARS YOU", "IT REMEMBERS", "NOT THE LOCKERS", "3 DAYS", "TRUST NO NOISE", "IT KNOWS", "KEEP MOVING", "HELP", "|||| |||| ||", "WHO IS THE HOST?" };
     static readonly Dictionary<string, string> ZONE_CODE = new Dictionary<string, string> { ["north-west"] = "NW", ["north"] = "N", ["north-east"] = "NE", ["west"] = "W", ["centre"] = "C", ["east"] = "E", ["south-west"] = "SW", ["south"] = "S", ["south-east"] = "SE" };
 
     Vector3 DirW(int dx, int dy) => new Vector3(dx, 0, -dy);

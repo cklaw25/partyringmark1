@@ -1,4 +1,4 @@
-// THE BROKER - the fast path. Sees, hears, moves and reacts every frame with plain code.
+// THE HOST - the fast path. Sees, hears, moves and reacts every frame with plain code.
 // The slow path (Claude strategist) only sets its strategy + maze changes; it never drives a frame.
 using System.Collections.Generic;
 using UnityEngine;

@@ -119,6 +119,7 @@ public static class VaultArt
 
     public static Texture2D DotTex => T("dot", () => Tex(TexGen.Dot(), wrap: TextureWrapMode.Clamp));
     public static Texture2D ShaftTex => T("shaft", () => Tex(TexGen.ShaftGradient(), wrap: TextureWrapMode.Clamp));
+    public static Texture2D HostEyeTex => T("hosteye", () => Tex(TexGen.HostEye(), wrap: TextureWrapMode.Clamp));
     public static Texture2D Cookie => T("cookie", () => Tex(TexGen.FlashCookie(), wrap: TextureWrapMode.Clamp, mips: false));
     // a dim, warm environment to reflect instead of Unity's default blue sky
     public static Cubemap DarkReflection
@@ -270,6 +271,18 @@ public static class VaultArt
     public static GameObject Cube(string name, Transform parent, Material mat, Vector3 localPos, Vector3 size, Quaternion? rot = null, bool collider = false)
         => Part(name, parent, Block, mat, localPos, size, rot, collider);
 
+    static Mesh ball;
+    // unit-diameter sphere (scale it into eggs, pads and joints)
+    public static Mesh Ball
+    {
+        get
+        {
+            if (ball != null) return ball;
+            var prof = new Vector2[13];
+            for (int i = 0; i < prof.Length; i++) { float t = i / (float)(prof.Length - 1) * Mathf.PI; prof[i] = new Vector2(Mathf.Sin(t) * 0.5f, -Mathf.Cos(t) * 0.5f); }
+            return ball = Lathe(prof, 20);
+        }
+    }
     static Mesh cyl;
     public static Mesh Cylinder => cyl != null ? cyl : (cyl = Lathe(new[] { new Vector2(0, -0.5f), new Vector2(0.5f, -0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 0.5f) }, 14));
     public static GameObject Cyl(string name, Transform parent, Material mat, Vector3 localPos, float radius, float length, Quaternion? rot = null)

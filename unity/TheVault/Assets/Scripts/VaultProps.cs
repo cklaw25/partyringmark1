@@ -1,4 +1,4 @@
-// Builders for every object in the vault except THE BROKER: doors of each kind, lockers, bottles, terminals,
+// Builders for every object in the vault except THE HOST: doors of each kind, lockers, bottles, terminals,
 // monitors, ceiling lights, pipes, signs and clutter. Pure construction; VaultWorld decides where things go.
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -32,7 +32,7 @@ public static class VaultProps
                 dv.lamps = Frame(statics, tileCenter, frameRot, A.DarkSteel, 0.32f);
                 dv.lampOn = A.Glow(new Color(1f, 0.1f, 0.05f), 4f); dv.lampOff = A.Glow(new Color(0.35f, 0.05f, 0.02f), 0.3f);
                 break;
-            case "shutter": // a corrugated wall panel the BROKER can drop
+            case "shutter": // a corrugated wall panel THE HOST can drop
                 A.Cube("panel", rt, A.Corrugated, Vector3.zero, new Vector3(T * 0.98f, H, T * 0.98f));
                 var la = A.Cube("lampA", rt, A.Glow(new Color(1f, 0.55f, 0.1f), 3f), new Vector3(0, H / 2 - 0.3f, T * 0.495f), new Vector3(0.5f, 0.06f, 0.03f));
                 var lb = A.Cube("lampB", rt, A.Glow(new Color(1f, 0.55f, 0.1f), 3f), new Vector3(0, H / 2 - 0.3f, -T * 0.495f), new Vector3(0.5f, 0.06f, 0.03f));

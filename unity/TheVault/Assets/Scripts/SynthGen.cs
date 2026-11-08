@@ -13,6 +13,7 @@ public static class SynthGen
         ("klaxon", 1, true), ("rumble", 1, false), ("motor", 1, false), ("clang", 1, false), ("beep", 1, false), ("creak", 2, false),
         ("breath", 1, true), ("growl", 1, false), ("bstep", 2, false), ("heartbeat", 1, false), ("drone", 1, true), ("hum", 1, true),
         ("amb_creak", 1, false), ("amb_knock", 1, false), ("amb_vent", 1, false), ("amb_steps", 1, false), ("stinger", 1, false),
+        ("sting_intro", 1, false), ("wake", 1, false), ("tone0", 1, false), ("tone1", 1, false), ("tone2", 1, false), ("tone3", 1, false),
     };
 
     const float TAU = (float)(Math.PI * 2);
@@ -269,6 +270,52 @@ public static class SynthGen
                 foreach (var f in new[] { 440f, 466.2f, 523.3f, 622.3f })
                     for (int i = 0; i < b.Length; i++) { float t = (float)i / SR; b[i] += (float)Math.Sin(TAU * f * t + 3 * (float)Math.Sin(TAU * 6.3f * t)) * Exp(t, 0.7f) * Att(t, 0.01f) * 0.25f; }
                 for (int i = 0; i < b.Length; i++) { float t = (float)i / SR; b[i] += lp.Do(r.N(), 3000) * Exp(t, 0.15f) * 0.9f; }
+                break;
+            }
+            case "sting_intro":
+            {
+                // title sting: a swell of noise sucked into a deep boom, a dissonant low cluster that blooms and hangs, metallic shimmer
+                b = Buf(5.5f); LP lp = default, lp2 = default; HP hp = default;
+                const float HIT = 0.55f;
+                for (int i = 0; i < (int)(HIT * SR); i++) { float t = (float)i / SR; float k = t / HIT; b[i] += hp.Do(lp.Do(r.N(), 300 + 4000 * k * k), 200) * k * k * k * 0.9f; }
+                Thump(b, HIT, 70, 26, 0.5f, 1.6f);
+                Thump(b, HIT, 160, 60, 0.06f, 0.6f);
+                foreach (var (f, a) in new[] { (55f, 1f), (58.27f, 0.8f), (82.4f, 0.7f), (110f, 0.5f), (116.5f, 0.45f), (164.8f, 0.3f) })
+                {
+                    float ph = 0;
+                    for (int i = (int)(HIT * SR); i < b.Length; i++)
+                    {
+                        float t = (float)i / SR - HIT; ph += TAU * f * (1 + 0.003f * (float)Math.Sin(TAU * 0.4f * t)) / SR;
+                        float w = (float)(Math.Sin(ph) + 0.5 * Math.Sin(2 * ph) + 0.25 * Math.Sin(3 * ph) + 0.12 * Math.Sin(4 * ph));
+                        b[i] += w * a * Att(t, 0.9f) * Exp(t, 2.2f) * 0.22f;
+                    }
+                }
+                for (int i = 0; i < b.Length; i++) b[i] = lp2.Do(b[i], 1400);
+                foreach (var (f, a) in new[] { (1843f, 1f), (2511f, 0.7f), (3177f, 0.5f), (4029f, 0.35f), (5288f, 0.25f) })
+                    for (int i = (int)(HIT * SR); i < b.Length; i++) { float t = (float)i / SR - HIT; b[i] += (float)Math.Sin(TAU * f * t) * a * Exp(t, 1.1f) * Att(t, 0.004f) * (0.7f + 0.3f * (float)Math.Sin(TAU * 5.1f * t)) * 0.05f; }
+                AddEcho(b, (0.19f, 0.35f), (0.41f, 0.22f), (0.77f, 0.12f));
+                break;
+            }
+            case "wake":
+            {
+                // a sharp inhale (rising band of noise) over two slow, muffled heartbeats
+                b = Buf(2.2f); BP bp = default;
+                for (int i = 0; i < (int)(0.9f * SR); i++) { float t = (float)i / SR; float env = Att(t, 0.5f) * Exp(t - 0.5f > 0 ? t - 0.5f : 0, 0.12f); b[i] += bp.Do(r.N(), 700 + 1500 * t, 2.5f) * env * 1.4f; }
+                Thump(b, 0.35f, 70, 45, 0.07f, 0.9f); Thump(b, 0.6f, 60, 40, 0.06f, 0.6f);
+                Thump(b, 1.35f, 70, 45, 0.07f, 0.8f); Thump(b, 1.6f, 60, 40, 0.06f, 0.5f);
+                break;
+            }
+            case "tone0": case "tone1": case "tone2": case "tone3":
+            {
+                // breaker tones (red, green, blue, yellow): a soft electric chime per colour, so the sequence can be heard too
+                float f = new[] { 196f, 261.6f, 329.6f, 392f }[name[4] - '0'];
+                b = Buf(0.55f); LP lp = default;
+                for (int i = 0; i < b.Length; i++)
+                {
+                    float t = (float)i / SR, ph = TAU * f * t;
+                    float w = (float)(Math.Sin(ph) + 0.35 * Math.Sin(2 * ph) + 0.18 * Math.Sin(3 * ph) + 0.08 * Math.Sin(5 * ph));
+                    b[i] = lp.Do(w, 2500) * Att(t, 0.006f) * Exp(t, 0.22f);
+                }
                 break;
             }
             default: b = Buf(0.1f); break;

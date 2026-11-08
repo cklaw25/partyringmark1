@@ -1,4 +1,4 @@
-"""THE BROKER - slow path (strategist). FastAPI WebSocket server that asks Claude for one strategic
+"""THE HOST - slow path (strategist). FastAPI WebSocket server that asks Claude for one strategic
 decision per request. The game never waits on this: if it is slow or down, the game uses fallback rules.
 
 Run:  uvicorn main:app --port 8000      (from the backend/ folder)
