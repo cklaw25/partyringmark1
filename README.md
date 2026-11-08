@@ -6,7 +6,8 @@ THE BROKER is a reactive AI agent that runs a horror maze. It watches the live e
 
 ## Two builds
 - **`unity/TheVault/` - the main game (Unity 3D, first-person).** Open in Unity 2022.3, press Play: the whole world is built from code.
-  A backrooms-style vault (open pillared halls, loopy corridors, flickering lights tied to the power room), 3 escape rooms with a 3-lock mechanic, sweeping security cameras (THE BROKER can't see everywhere), 3 days, central exit, crouch/hide/throw.
+  A backrooms-style vault (open pillared halls, loopy corridors, flickering lights tied to the power room) around dark-facility escape rooms, 3 escape rooms with a 3-lock mechanic, sweeping security cameras (THE BROKER can't see everywhere), 3 days, central exit, crouch/hide/throw.
+  All textures, models and sounds are generated in code at startup (`TexGen.cs`, `VaultProps.cs`, `SynthGen.cs`); drop a real recording into `unity/TheVault/Assets/Resources/Audio/<name>.wav` (e.g. `step_carpet_1.wav`, `shatter.wav`) to replace any synthesised sound. A heartbeat and screen vignette/blur build up as THE BROKER closes in (`DangerFX.reduceEffects` tones it down).
 - **`frontend/` - 2D browser prototype (idea showcase).** The first version of the concept in Phaser, for quickly showing judges the AI loop.
 
 ## Architecture: fast path + slow path

@@ -12,6 +12,7 @@ public class EscapeRoom
     public bool active, done, breached;
     public float timer;
     public const float TIME_LIMIT = 90f;
+    public static System.Action<string> Sfx; // UI clicks (set by VaultGame)
 
     // Power: breaker sequence memory
     public int[] sequence; public int seqPos; public float watchStart; public bool watching;
@@ -66,6 +67,7 @@ public class EscapeRoom
                 GUI.backgroundColor = on ? Color.white : BREAKER[i] * 0.8f;
                 if (GUILayout.Button(BREAKER_NAME[i], GUILayout.Height(90)) && !watching)
                 {
+                    Sfx?.Invoke("click");
                     if (sequence[seqPos] == i) { seqPos++; if (seqPos >= sequence.Length) result = 2; }
                     else { result = 1; seqPos = 0; watching = true; watchStart = Time.time; }
                 }
@@ -87,6 +89,7 @@ public class EscapeRoom
                     int k = row * 3 + c; string lbl = k < 9 ? (k + 1).ToString() : k == 9 ? "CLR" : k == 10 ? "0" : "ENTER";
                     if (GUILayout.Button(lbl, GUILayout.Height(44), GUILayout.Width(110)))
                     {
+                        Sfx?.Invoke("click");
                         if (lbl == "CLR") entry = "";
                         else if (lbl == "ENTER") { if (entry == code) result = 2; else { result = 1; entry = ""; } }
                         else if (entry.Length < 4) entry += lbl;
@@ -106,6 +109,7 @@ public class EscapeRoom
             GUI.color = Color.white; GUI.DrawTexture(new Rect(r.x + r.width * bar - 3, r.y - 4, 6, r.height + 8), Texture2D.whiteTexture);
             if (GUILayout.Button("PULL LEVER  (SPACE)", GUILayout.Height(60)) || Event.current.type == EventType.KeyDown && Event.current.keyCode == KeyCode.Space)
             {
+                Sfx?.Invoke("click");
                 if (bar >= zoneStart && bar <= zoneStart + zoneWidth) { leverHits++; NewLeverZone(); if (leverHits >= 3) result = 2; }
                 else { result = 1; NewLeverZone(); }
                 if (Event.current.type == EventType.KeyDown) Event.current.Use();

@@ -6,7 +6,7 @@ using System.Diagnostics;
 using System.Linq;
 using UnityEngine;
 
-public class VaultGame : MonoBehaviour
+public partial class VaultGame : MonoBehaviour
 {
     public const float TILE = 2.5f, WALL_H = 3f;
     public uint seed = 1337;
@@ -14,7 +14,7 @@ public class VaultGame : MonoBehaviour
     const float STRATEGY_INTERVAL = 4f, STRUCTURAL_COOLDOWN = 6.5f, GRACE = 15f; const int MAX_BROKER_CLOSED = 4;
     public float demoSeconds = 420, fullSeconds = 1800; // round length (demo = 7 min)
     const float CATCH_DIST = 1.2f, DOOR_SPEED = 6f;
-    static readonly Color FOG_BASE = new Color(0.035f, 0.03f, 0.015f);
+    static readonly Color FOG_BASE = new Color(0.012f, 0.01f, 0.007f);
 
     public VaultMaze maze; public BrokerMemory mem; public BrokerAgent broker; public FirstPersonPlayer player; StrategistClient client;
     public int day = 1; int bottles = 2; float elapsed, lastStrategy = GRACE - STRATEGY_INTERVAL, lastStructural = -99, lastReflexSay = -99;
@@ -35,9 +35,9 @@ public class VaultGame : MonoBehaviour
     readonly List<Light> roomLights = new List<Light>();
     readonly List<Transform> signs = new List<Transform>();
     Texture2D minimap; float minimapTimer; Vector2 pmScroll, panelScroll; float runNoise;
-    // backrooms ceiling lights: many emissive panels, a few real lights; the power room decides how many work
-    class Panel { public Renderer r; public Light l; public bool on, flicker; public float next; }
-    readonly List<Panel> panels = new List<Panel>(); Material panelOnM, panelOffM; bool lightsPowered; AudioSource hum;
+    // atmosphere: sound, screen effects, how close THE BROKER is
+    VaultAudio sfx; DangerFX fx;
+    float danger, dangerTimer, dangerTarget, brokerStepAcc, nextGrowl; Vector3 brokerPrev; string brokerPrevState = "PATROL";
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Boot()
@@ -62,14 +62,29 @@ public class VaultGame : MonoBehaviour
             var er = new EscapeRoom(n, maze.rooms[n], rng); er.gates = maze.doors.Where(d => d.room == n).ToList(); rooms[n] = er;
         }
         RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-        RenderSettings.ambientLight = new Color(0.045f, 0.04f, 0.03f);
-        RenderSettings.fog = true; RenderSettings.fogMode = FogMode.Exponential; RenderSettings.fogDensity = 0.045f; RenderSettings.fogColor = FOG_BASE;
+        // dark, close fog: you see your flashlight, pools of light under working panels, and glows fading into black
+        RenderSettings.ambientLight = new Color(0.032f, 0.029f, 0.023f);
+        RenderSettings.fog = true; RenderSettings.fogMode = FogMode.ExponentialSquared; RenderSettings.fogDensity = 0.075f; RenderSettings.fogColor = FOG_BASE;
+        QualitySettings.pixelLightCount = Mathf.Max(QualitySettings.pixelLightCount, 6); QualitySettings.shadowDistance = 30f;
+        // reflect a dim warm environment, not the default blue sky (which tints every wet/metal surface)
+        RenderSettings.defaultReflectionMode = UnityEngine.Rendering.DefaultReflectionMode.Custom;
+        RenderSettings.customReflectionTexture = VaultArt.DarkReflection; RenderSettings.reflectionIntensity = 1f;
+        sfx = gameObject.AddComponent<VaultAudio>();
         BuildWorld(rng);
-        RollPanels(false);
-        BuildHum();
         var pgo = new GameObject("Player"); pgo.transform.SetParent(transform);
         player = pgo.AddComponent<FirstPersonPlayer>(); player.Build(this, World(maze.start)); player.Look(90);
-        var bgo = BuildBrokerBody(); broker = bgo.AddComponent<BrokerAgent>(); broker.Init(this);
+        sfx.Init(player.cam.transform);
+        fx = player.cam.gameObject.AddComponent<DangerFX>();
+        sfx.OnBeat = () => fx.pulse = 1f;
+        BuildDust(player.cam.transform);
+        RollPanels(false);
+        player.onStep = () =>
+        {
+            bool concrete = maze.RoomAt(player.T.x, player.T.y) != null;
+            sfx.Play(concrete ? "step_concrete" : "step_carpet", null, player.crouched ? 0.15f : player.running ? 0.7f : 0.4f, 0.08f);
+        };
+        EscapeRoom.Sfx = n => sfx.Play(n, null, 0.6f);
+        var bgo = BuildBrokerBody(); broker = bgo.AddComponent<BrokerAgent>(); broker.Init(this); brokerPrev = broker.transform.position;
         lastTile = player.T;
         minimap = new Texture2D(maze.w, maze.h) { filterMode = FilterMode.Point };
         Emit("game_started", ("seed", (int)seed), ("mode", demoMode ? "demo" : "full"));
@@ -97,124 +112,6 @@ public class VaultGame : MonoBehaviour
         tm.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); go.GetComponent<MeshRenderer>().sharedMaterial = tm.font.material;
         if (billboard) signs.Add(go.transform);
         return tm;
-    }
-
-    void BuildWorld(System.Random rng)
-    {
-        // backrooms palette: mustard wallpaper, stained carpet, pale ceiling tiles; rooms keep bare concrete
-        var wallM = Mat(new Color(0.52f, 0.46f, 0.25f)); var floorM = Mat(new Color(0.3f, 0.25f, 0.14f)); var roomFloorM = Mat(new Color(0.16f, 0.15f, 0.14f));
-        var doorM = Mat(new Color(0.5f, 0.08f, 0.08f), new Color(0.6f, 0.02f, 0.02f)); var shutterM = Mat(new Color(0.35f, 0.25f, 0.12f), new Color(0.15f, 0.08f, 0f));
-        var gateM = Mat(new Color(0.25f, 0.25f, 0.45f), new Color(0.15f, 0.15f, 0.5f)); var blastM = Mat(new Color(0.5f, 0.45f, 0.1f), new Color(0.5f, 0.35f, 0f));
-        var lockerM = Mat(new Color(0.25f, 0.33f, 0.27f));
-        float W = maze.w * TILE, H = maze.h * TILE;
-        Box("Floor", new Vector3(W / 2 - TILE / 2, -0.05f, -(H / 2 - TILE / 2)), new Vector3(W, 0.1f, H), floorM);
-        Box("Ceiling", new Vector3(W / 2 - TILE / 2, WALL_H + 0.05f, -(H / 2 - TILE / 2)), new Vector3(W, 0.1f, H), Mat(new Color(0.42f, 0.4f, 0.33f)), false);
-        panelOnM = Mat(new Color(0.9f, 0.88f, 0.75f), new Color(1.6f, 1.5f, 1.1f)); panelOffM = Mat(new Color(0.25f, 0.25f, 0.22f));
-        int panelIdx = 0;
-        for (int y = 0; y < maze.h; y++) for (int x = 0; x < maze.w; x++)
-        {
-            var p = World(new Tile(x, y));
-            if (maze.grid[y, x] == 1) Box("Wall", p + Vector3.up * WALL_H / 2, new Vector3(TILE, WALL_H, TILE), wallM);
-            else if (maze.RoomAt(x, y) != null) Box("RoomFloor", p + Vector3.up * 0.005f, new Vector3(TILE, 0.01f, TILE), roomFloorM, false);
-            else if (x % 2 == 1 && y % 2 == 1 && (x / 2 + y / 2) % 2 == 0)
-            {
-                // fluorescent panel on every other cell; every third one is a real (shadowless) light
-                var pan = new Panel { r = Box("LightPanel", p + Vector3.up * (WALL_H - 0.02f), new Vector3(1.3f, 0.04f, 0.6f), panelOffM, false).GetComponent<Renderer>() };
-                if (panelIdx++ % 3 == 0)
-                {
-                    var lg = new GameObject("PanelLight"); lg.transform.SetParent(transform); lg.transform.position = p + Vector3.up * (WALL_H - 0.3f);
-                    pan.l = lg.AddComponent<Light>(); pan.l.type = LightType.Point; pan.l.range = 8f; pan.l.intensity = 0.6f; pan.l.color = new Color(1f, 0.93f, 0.7f); pan.l.shadows = LightShadows.None;
-                }
-                panels.Add(pan);
-            }
-        }
-        foreach (var d in maze.doors)
-        {
-            var m = d.kind == "door" ? doorM : d.kind == "shutter" ? shutterM : d.kind == "gate" ? gateM : blastM;
-            doorGo[d.id] = Box(d.id, World(new Tile(d.x, d.y)) + Vector3.up * (d.closed ? WALL_H / 2 : -WALL_H / 2 + 0.05f), new Vector3(TILE * 0.98f, WALL_H, TILE * 0.98f), m);
-        }
-        foreach (var l in maze.lockers) Box(l.id, World(new Tile(l.x, l.y)) + Vector3.up * 1.0f, new Vector3(0.9f, 2.0f, 0.9f), lockerM, false);
-        foreach (var it in maze.items) itemGo[it] = BuildItem(it);
-        // rooms: signs, emergency lights, terminals
-        var termM = Mat(new Color(0.1f, 0.12f, 0.1f), new Color(0.05f, 0.4f, 0.15f));
-        foreach (var rm in maze.rooms.Values)
-        {
-            string disp = rm.name == "central" ? "CENTRAL EXIT" : rm.name == "containment" ? "CONTAINMENT" : rooms[rm.name].title;
-            Label(disp, World(new Tile(rm.cx, rm.cy)) + Vector3.up * (WALL_H - 0.45f), new Color(0.9f, 0.35f, 0.3f));
-            var lg = new GameObject("RoomLight_" + rm.name); lg.transform.SetParent(transform);
-            lg.transform.position = World(new Tile(rm.cx, rm.cy)) + Vector3.up * (WALL_H - 0.3f);
-            var li = lg.AddComponent<Light>(); li.type = LightType.Point; li.range = 11; li.intensity = 0.8f; li.color = new Color(0.8f, 0.1f, 0.1f);
-            roomLights.Add(li);
-            if (rooms.ContainsKey(rm.name)) Box("Terminal_" + rm.name, World(new Tile(rm.cx, rm.cy)) + Vector3.up * 0.55f, new Vector3(0.8f, 1.1f, 0.5f), termM);
-        }
-        // surveillance monitors: digits you must read in 3D
-        var sv = rooms["surveillance"]; var srm = sv.room;
-        var corners = new[] { new Tile(srm.x, srm.y), new Tile(srm.x + srm.w - 1, srm.y), new Tile(srm.x, srm.y + srm.h - 1), new Tile(srm.x + srm.w - 1, srm.y + srm.h - 1) };
-        for (int i = 0; i < 4; i++)
-        {
-            var pos = World(corners[i]) + Vector3.up * 2.35f;
-            Box("Monitor", pos, new Vector3(0.9f, 0.6f, 0.9f), Mat(new Color(0.05f, 0.08f, 0.1f), new Color(0.05f, 0.2f, 0.3f)), false);
-            Label($"CAM {sv.camLabels[i]}\n{sv.camDigits[i]}", pos + Vector3.up * 0.05f + (World(new Tile(srm.cx, srm.cy)) - World(corners[i])).normalized * 0.5f, new Color(0.5f, 0.9f, 1f), 0.045f);
-        }
-        // security cameras (positions depend on the seed)
-        var spots = maze.cameraSpots.OrderBy(_ => rng.Next()).Take(11).ToList();
-        int ci = 0;
-        foreach (var s in spots)
-        {
-            bool horiz = maze.Walkable(s.x - 1, s.y) && maze.Walkable(s.x + 1, s.y);
-            float yaw = horiz ? (rng.Next(2) == 0 ? 90 : 270) : (rng.Next(2) == 0 ? 0 : 180);
-            var go = new GameObject("SecurityCam_" + (++ci)); go.transform.SetParent(transform);
-            var cam = go.AddComponent<SecurityCamera>(); cam.Build("cam_" + ci, s, World(s) + Vector3.up * (WALL_H - 0.25f), yaw);
-            cams.Add(cam);
-        }
-    }
-
-    void RollPanels(bool powered)
-    {
-        var r = new System.Random((int)seed + (powered ? 7 : 0));
-        foreach (var p in panels)
-        {
-            p.on = r.NextDouble() < (powered ? 0.92 : 0.45);
-            p.flicker = r.NextDouble() < (powered ? 0.05 : 0.2);
-            SetPanel(p, p.on);
-        }
-        if (hum != null) hum.volume = powered ? 0.06f : 0.03f;
-    }
-
-    void SetPanel(Panel p, bool lit) { p.r.sharedMaterial = lit ? panelOnM : panelOffM; if (p.l != null) p.l.enabled = lit; }
-
-    void TickLights()
-    {
-        bool powered = rooms["power"].done;
-        if (powered != lightsPowered) { lightsPowered = powered; RollPanels(powered); }
-        foreach (var p in panels)
-        {
-            if (!p.flicker || Time.time < p.next) continue;
-            p.next = Time.time + Random.Range(0.03f, 0.35f) * (Random.value < 0.15f ? 8f : 1f);
-            SetPanel(p, p.on ? Random.value < 0.75f : Random.value < 0.12f);
-        }
-    }
-
-    // fluorescent hum, generated in code (integer frequencies over 1 s, so it loops seamlessly)
-    void BuildHum()
-    {
-        const int sr = 44100; var data = new float[sr]; var r = new System.Random(3);
-        for (int i = 0; i < sr; i++)
-        {
-            float t = (float)i / sr;
-            data[i] = 0.5f * Mathf.Sin(2 * Mathf.PI * 120 * t) + 0.25f * Mathf.Sin(2 * Mathf.PI * 240 * t) + 0.12f * Mathf.Sin(2 * Mathf.PI * 360 * t) + 0.05f * ((float)r.NextDouble() * 2 - 1);
-        }
-        var clip = AudioClip.Create("hum", sr, 1, sr, false); clip.SetData(data, 0);
-        hum = gameObject.AddComponent<AudioSource>(); hum.clip = clip; hum.loop = true; hum.spatialBlend = 0; hum.volume = 0.03f; hum.Play();
-    }
-
-    GameObject BuildItem(Item it)
-    {
-        var c = new Color(0.6f, 0.65f, 0.6f);
-        var g = GameObject.CreatePrimitive(PrimitiveType.Cylinder); g.name = it.type; g.transform.SetParent(transform); Destroy(g.GetComponent<Collider>());
-        g.transform.position = World(new Tile(it.x, it.y)) + Vector3.up * 0.9f; g.transform.localScale = new Vector3(0.15f, 0.2f, 0.15f);
-        g.GetComponent<Renderer>().sharedMaterial = Mat(c, c * 0.5f);
-        return g;
     }
 
     GameObject BuildBrokerBody()
@@ -379,6 +276,7 @@ public class VaultGame : MonoBehaviour
         r.Begin(); SetGates(r, true);
         var pt = player.T; mem.lastSeen = pt; mem.lastSeenTime = Time.time;
         Emit("room_entered", ("room", r.name), ("locks_left", r.locks));
+        sfx.Play("lock", null, 0.8f, 0f, 30f, 0.8f);
         Toast($"{r.title}: LOCKDOWN. Solve the terminal puzzle. Every mistake breaks a lock.");
         if (r.name == "surveillance") Say($"Welcome to my eyes. The code is {r.fakeCode}. Trust me.", false);
         else Say(r.name == "power" ? "The power chamber. Careful which breaker you touch." : "The emergency release. Your hands are shaking already.", false);
@@ -387,6 +285,7 @@ public class VaultGame : MonoBehaviour
     void RoomMistake(EscapeRoom r, string why)
     {
         r.locks--; r.mistakes++;
+        sfx.Play("buzzer", null, 0.7f, 0f); sfx.Play("clang", null, 0.6f, 0.05f, 30f, 1.4f); fx.flash = 0.5f;
         Emit("puzzle_mistake", ("room", r.name), ("why", why), ("locks_left", r.locks));
         Say(r.locks == 2 ? "One lock gone. I can hear it break." : r.locks == 1 ? "Two locks remaining? No. Only one." : "The door is open. I'm coming in.", false);
         if (r.locks <= 0)
@@ -402,12 +301,14 @@ public class VaultGame : MonoBehaviour
     {
         r.done = true; r.active = false; SetGates(r, false); puzzleOpen = false; player.frozen = false; Cursor.lockState = CursorLockMode.Locked; Cursor.visible = false;
         Emit("room_completed", ("room", r.name), ("mistakes", r.mistakes));
-        if (r.name == "power") { foreach (var li in roomLights) { li.color = new Color(1f, 0.92f, 0.8f); li.intensity = 1.4f; } RenderSettings.ambientLight = new Color(0.05f, 0.05f, 0.06f); }
+        sfx.Play("chime", null, 0.8f, 0f); sfx.Play("lock", null, 0.8f, 0f);
+        if (r.name == "power") { foreach (var li in roomLights) { li.color = new Color(1f, 0.92f, 0.8f); li.intensity = 1.4f; } RenderSettings.ambientLight = new Color(0.045f, 0.042f, 0.034f); }
         Toast($"{r.title} COMPLETE ({RoomsDone}/3)");
         if (RoomsDone >= 3)
         {
             centralOpen = true; foreach (var d in maze.doors.Where(d => d.kind == "blast")) d.closed = false;
             Emit("central_exit_unlocked");
+            sfx.Play("rumble", null, 1f, 0f);
             Say("All three. The central exit is open. Now you have to reach it.", false);
             Toast("ALL ROOMS DONE: the central exit blast doors are OPEN. Reach the centre of the maze!");
         }
@@ -427,7 +328,11 @@ public class VaultGame : MonoBehaviour
     {
         var pt = player.T;
         if (puzzleOpen) { ClosePuzzle(); return; }
-        if (player.hidden) { player.hidden = false; player.Teleport(player.hideReturnPos); player.locker = null; Emit("player_left_hiding"); return; }
+        if (player.hidden)
+        {
+            var li0 = lockerInfo[player.locker.id]; sfx.Play("creak", li0.inside, 0.7f); StartCoroutine(SwingLocker(li0.hinge, false));
+            player.hidden = false; player.Teleport(player.hideReturnPos); player.locker = null; Emit("player_left_hiding"); return;
+        }
         var ar = ActiveRoom;
         if (ar != null && !ar.breached && Mathf.Abs(ar.room.cx - pt.x) + Mathf.Abs(ar.room.cy - pt.y) <= 1)
         {
@@ -438,7 +343,9 @@ public class VaultGame : MonoBehaviour
         {
             player.seenEnteringLocker = broker.CanSee(new Tile(locker.x, locker.y), false, false, rooms["power"].done);
             player.hideReturnPos = player.transform.position; player.hidden = true; player.locker = locker;
-            player.Teleport(World(new Tile(locker.x, locker.y)) + Vector3.up * 1f);
+            var li = lockerInfo[locker.id];
+            player.Teleport(li.inside); player.Look(Quaternion.LookRotation(li.front).eulerAngles.y);
+            sfx.Play("creak", li.inside, 0.7f); StartCoroutine(SwingLocker(li.hinge, true));
             mem.hides++; mem.lockerUses.TryGetValue(locker.id, out var u); mem.lockerUses[locker.id] = u + 1;
             Emit("player_hiding", ("hiding_place", locker.id), ("zone", locker.zone), ("seen_entering", player.seenEnteringLocker));
         }
@@ -453,12 +360,12 @@ public class VaultGame : MonoBehaviour
         bottles--;
         var pt = player.T; var f = player.FacingDir(); int x = pt.x, y = pt.y;
         for (int i = 0; i < 7; i++) { int nx = x + f.x, ny = y + f.y; if (!maze.Walkable(nx, ny)) break; x = nx; y = ny; }
-        var g = GameObject.CreatePrimitive(PrimitiveType.Sphere); Destroy(g.GetComponent<Collider>()); g.transform.SetParent(transform);
-        g.transform.position = World(new Tile(x, y)) + Vector3.up * 0.1f; g.transform.localScale = Vector3.one * 0.3f;
-        g.GetComponent<Renderer>().sharedMaterial = Mat(new Color(1f, 0.85f, 0.4f), new Color(1f, 0.7f, 0.2f)); Destroy(g, 1.5f);
         mem.throws++;
         Emit("object_thrown", ("landing_zone", maze.ZoneOf(x, y)), ("thrown_from_zone", maze.ZoneOf(pt.x, pt.y)));
-        broker.Hear(new NoiseEvent { x = x, y = y, radius = 12, kind = "throw", fromX = pt.x, fromY = pt.y });
+        // the bottle flies in an arc; THE BROKER hears it where (and when) it smashes
+        var ct = player.cam.transform;
+        StartCoroutine(ThrowFx(ct.position + ct.forward * 0.4f + ct.right * 0.2f - ct.up * 0.15f, World(new Tile(x, y)) + new Vector3(Random.Range(-0.4f, 0.4f), 0.02f, Random.Range(-0.4f, 0.4f)),
+            new NoiseEvent { x = x, y = y, radius = 12, kind = "throw", fromX = pt.x, fromY = pt.y }));
     }
 
     void MicNoise()
@@ -473,6 +380,7 @@ public class VaultGame : MonoBehaviour
         if (over) return;
         var pt = player.T;
         mem.captures.Add((pt.x, pt.y, maze.ZoneOf(pt.x, pt.y), how, elapsed));
+        sfx.Play("stinger", null, 1f, 0f); fx.flash = 1f; danger = 0;
         Emit("player_captured", ("zone", maze.ZoneOf(pt.x, pt.y)), ("how", how), ("day_lost", day));
         if (day >= 3) { EndGame(false); return; }
         day++;
@@ -526,7 +434,8 @@ public class VaultGame : MonoBehaviour
         player.Tick(dt);
         var pt = player.T;
         // landings are heard; faster landings carry further
-        if (player.landedThisFrame) broker.Hear(new NoiseEvent { x = pt.x, y = pt.y, radius = 3 + player.landSpeed * 0.5f, kind = "land" });
+        if (player.landedThisFrame) { broker.Hear(new NoiseEvent { x = pt.x, y = pt.y, radius = 3 + player.landSpeed * 0.5f, kind = "land" }); sfx.Play("land", null, 0.55f, 0.08f); }
+        if (player.jumpedThisFrame) sfx.Play("jump", null, 0.3f, 0.1f);
         if (pt.x != lastTile.x || pt.y != lastTile.y) { OnTile(pt); lastTile = pt; }
         if (over) return;
         mem.Tick(dt, maze.ZoneOf(pt.x, pt.y), player.moving, player.running);
@@ -544,6 +453,7 @@ public class VaultGame : MonoBehaviour
                 Emit("camera_spotted", ("camera", c.id), ("zone", maze.ZoneOf(pt.x, pt.y)));
                 broker.Hear(new NoiseEvent { x = pt.x, y = pt.y, radius = 999, kind = "camera" });
                 Say("Camera " + c.id.Replace("cam_", "") + " sees you.", true);
+                sfx.Play("beep", c.transform.position, 0.9f, 0f, 35f); fx.flash = Mathf.Max(fx.flash, 0.45f);
             }
         }
 
@@ -556,21 +466,50 @@ public class VaultGame : MonoBehaviour
         EvaluateOutcome();
         if (GameSeconds - elapsed <= 0) EndGame(false);
 
-        foreach (var d in maze.doors)
-        {
-            var g = doorGo[d.id]; float ty = d.closed ? WALL_H / 2 : -WALL_H / 2 + 0.05f;
-            var p = g.transform.position; p.y = Mathf.MoveTowards(p.y, ty, DOOR_SPEED * dt); g.transform.position = p;
-            g.GetComponent<Collider>().enabled = d.closed || p.y > 0.5f;
-        }
-        foreach (var g in itemGo.Values) g.transform.Rotate(0, 90 * dt, 0);
+        TickWorld(dt);
         foreach (var s in signs) s.rotation = Quaternion.LookRotation(s.position - player.cam.transform.position);
         var ar = ActiveRoom;
         bool alarm = broker.AlarmOn || (ar != null && ar.locks < 3 && !ar.breached);
         RenderSettings.fogColor = alarm ? new Color(0.25f * (0.5f + 0.5f * Mathf.Sin(Time.time * 8)), 0, 0) : FOG_BASE;
-        TickLights();
-        player.flashlight.intensity = (rooms["power"].done ? 2.2f : 1.8f) * (Random.value < 0.01f ? 0.2f : 1f);
+        TickAtmosphere(dt, alarm);
 
         sw.Stop(); fastSamples.Add((float)sw.Elapsed.TotalMilliseconds); if (fastSamples.Count > 60) fastSamples.RemoveAt(0);
+    }
+
+    // ---------- atmosphere: heartbeat, danger screen, BROKER footsteps ----------
+    void TickAtmosphere(float dt, bool alarm)
+    {
+        // how close THE BROKER is, by walking distance (a wall between you and a long way round doesn't count)
+        dangerTimer -= dt;
+        if (dangerTimer <= 0)
+        {
+            dangerTimer = 0.25f;
+            var bt = broker.T; var pt = player.T;
+            var path = maze.Path(bt, pt) ?? maze.Path(bt, pt, true);
+            float d = path != null ? path.Count - 1 : Mathf.Sqrt((bt.x - pt.x) * (bt.x - pt.x) + (bt.y - pt.y) * (bt.y - pt.y)) * 1.5f;
+            dangerTarget = Mathf.Pow(Mathf.Clamp01((12f - d) / 10f), 1.3f);
+            if (broker.state == "CHASE" && d < 16) dangerTarget = Mathf.Max(dangerTarget, 0.3f);
+        }
+        danger = Mathf.MoveTowards(danger, dangerTarget, dt * (dangerTarget > danger ? 1.2f : 0.5f));
+        float fxDanger = Mathf.SmoothStep(0, 1, Mathf.Clamp01((danger - 0.4f) / 0.6f)); // the screen only reacts when it's really close
+        fx.danger = fxDanger;
+        player.fovOffset = -8f * fxDanger * (fx.reduceEffects ? 0.3f : 1f);
+        player.flashFlicker = fxDanger;
+        player.flashBase = rooms["power"].done ? 4.2f : 3.8f;
+
+        sfx.danger = danger; sfx.hidden = player.hidden; sfx.alarm = alarm;
+        sfx.threat = broker.Threat == "ACTIVE HUNT" ? 1f : broker.Threat == "INVESTIGATION" ? 0.5f : 0f;
+        sfx.slideLevel = player.state == FirstPersonPlayer.MoveState.GroundSlide ? Mathf.Clamp01(player.HorizontalSpeed / 8f) : 0f;
+
+        // heavy footsteps and a growl when it starts hunting
+        var bp = broker.transform.position; float bd = Vector3.Distance(bp, brokerPrev); if (bd < 3f) brokerStepAcc += bd; brokerPrev = bp;
+        if (brokerStepAcc > 1.4f) { brokerStepAcc = 0; sfx.Play("bstep", bp + Vector3.up * 0.2f, 0.9f, 0.08f, 28f); }
+        if (broker.state != brokerPrevState)
+        {
+            if ((broker.state == "CHASE" || broker.state == "INVESTIGATE" || broker.state == "SEARCH") && Time.time > nextGrowl)
+            { sfx.Play("growl", bp + Vector3.up * 1.6f, broker.state == "CHASE" ? 1f : 0.7f, 0.1f, 32f); nextGrowl = Time.time + 8f; }
+            brokerPrevState = broker.state;
+        }
     }
 
     // ---------- GUI ----------

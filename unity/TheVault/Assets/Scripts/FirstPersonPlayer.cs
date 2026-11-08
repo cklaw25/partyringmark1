@@ -41,8 +41,11 @@ public class FirstPersonPlayer : MonoBehaviour
     public bool Sliding => state == MoveState.AirSlide || state == MoveState.GroundSlide;
     public float HorizontalSpeed => new Vector3(velocity.x, 0, velocity.z).magnitude;
     // read by VaultGame after Tick: landing makes noise
-    public bool landedThisFrame; public float landSpeed;
-    public System.Action onStep; // fires on each footstep (hook for future footstep audio)
+    public bool landedThisFrame, jumpedThisFrame; public float landSpeed;
+    public System.Action onStep; // fires on each footstep (VaultGame plays the footstep sound)
+    // set by VaultGame: danger zoom, flashlight strength and how much it stutters when THE BROKER is near
+    public float fovOffset, flashBase = 3.8f, flashFlicker;
+    Light nearLight; Quaternion flashRot = Quaternion.identity;
 
     float coyote, buffer, bobPhase, bobBlend, landDip, landDipVel, roll, fovKick, shake, eyeY = 0.65f, peakSpeed;
     bool slideUsed;
@@ -61,18 +64,24 @@ public class FirstPersonPlayer : MonoBehaviour
         cam = camGo.AddComponent<Camera>();
         cam.nearClipPlane = 0.05f; cam.fieldOfView = baseFov; cam.backgroundColor = Color.black; cam.clearFlags = CameraClearFlags.SolidColor;
         camGo.AddComponent<AudioListener>();
+        // flashlight: held slightly right and low, lags behind the view, real torch pattern, always per-pixel
         var fl = new GameObject("Flashlight");
-        fl.transform.SetParent(camGo.transform, false);
+        fl.transform.SetParent(transform, false);
         flashlight = fl.AddComponent<Light>();
-        flashlight.type = LightType.Spot; flashlight.range = 20; flashlight.spotAngle = 60; flashlight.intensity = 2.2f;
-        flashlight.color = new Color(1f, 0.95f, 0.85f); flashlight.shadows = LightShadows.Soft;
+        flashlight.type = LightType.Spot; flashlight.range = 24; flashlight.spotAngle = 68; flashlight.intensity = flashBase;
+        flashlight.color = new Color(1f, 0.94f, 0.82f); flashlight.shadows = LightShadows.Soft; flashlight.shadowStrength = 0.9f;
+        flashlight.cookie = VaultArt.Cookie; flashlight.renderMode = LightRenderMode.ForcePixel;
+        flashRot = camGo.transform.rotation;
+        // faint spill around you so walls right next to you never go pitch black
+        nearLight = new GameObject("NearLight").AddComponent<Light>(); nearLight.transform.SetParent(camGo.transform, false);
+        nearLight.type = LightType.Point; nearLight.range = 4f; nearLight.intensity = 0.3f; nearLight.color = new Color(1f, 0.9f, 0.75f); nearLight.shadows = LightShadows.None;
     }
 
     public void Look(float yawDeg) { yaw = yawDeg; transform.rotation = Quaternion.Euler(0, yaw, 0); }
 
     public void Tick(float dt)
     {
-        landedThisFrame = false;
+        landedThisFrame = jumpedThisFrame = false;
         if (Input.GetKeyDown(KeyCode.F3)) debugSpeed = !debugSpeed;
         if (Cursor.lockState == CursorLockMode.Locked && !frozen)
         {
@@ -84,6 +93,8 @@ public class FirstPersonPlayer : MonoBehaviour
         {
             moving = running = crouched = false; velocity = Vector3.zero; state = MoveState.Ground; buffer = 0;
             cam.transform.localRotation = Quaternion.Euler(pitch, 0, 0);
+            cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, baseFov + fovOffset, 10f * dt);
+            UpdateFlashlight(dt);
             return;
         }
 
@@ -155,6 +166,7 @@ public class FirstPersonPlayer : MonoBehaviour
         {
             if (state == MoveState.GroundSlide) { velocity.y = jumpVelocity * hopHeight; h *= hopKeep; }
             else velocity.y = jumpVelocity;
+            jumpedThisFrame = true;
             state = MoveState.Air; slideUsed = false; buffer = 0; coyote = 0;
         }
 
@@ -243,7 +255,22 @@ public class FirstPersonPlayer : MonoBehaviour
         fovKick = Mathf.MoveTowards(fovKick, 0, dt * 8f);
         float speed01 = Mathf.Clamp01((hs - walkSpeed) / (maxSpeed - walkSpeed));
         float fovTarget = baseFov + (maxFovBoost * speed01 + fovKick) * k;
-        cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, fovTarget, 10f * dt);
+        cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, fovTarget + fovOffset, 10f * dt);
+        UpdateFlashlight(dt);
+    }
+
+    void UpdateFlashlight(float dt)
+    {
+        var ct = cam.transform;
+        flashlight.transform.position = ct.TransformPoint(new Vector3(0.22f, -0.18f, 0.15f));
+        flashRot = Quaternion.Slerp(flashRot, ct.rotation, 1f - Mathf.Exp(-14f * dt));
+        flashlight.transform.rotation = flashRot;
+        float flick = 1f;
+        if (flashFlicker > 0.05f && Random.value < flashFlicker * 0.25f) flick = Random.Range(0.1f, 0.8f); // stutters as it closes in
+        else if (Random.value < 0.004f) flick = 0.3f;                                                   // old battery
+        float target = flashBase * flick * (hidden ? 0.15f : 1f);
+        flashlight.intensity = Mathf.Lerp(flashlight.intensity, target, 1f - Mathf.Exp(-30f * dt));
+        nearLight.intensity = hidden ? 0.05f : 0.3f;
     }
 
     void OnGUI()
