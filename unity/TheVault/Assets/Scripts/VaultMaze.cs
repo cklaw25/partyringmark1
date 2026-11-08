@@ -48,7 +48,7 @@ public class VaultMaze
     public static readonly string[] ZONE_LIST = { "north-west", "north", "north-east", "west", "centre", "east", "south-west", "south", "south-east" };
     public static readonly int[,] DIRS = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } };
 
-    public VaultMaze(uint seed = 1337, int cellsW = 13, int cellsH = 9)
+    public VaultMaze(uint seed = 1337, int cellsW = 17, int cellsH = 11)
     {
         rng = new Mulberry32(seed);
         cw = cellsW; ch = cellsH; w = cw * 2 + 1; h = ch * 2 + 1;
@@ -85,6 +85,14 @@ public class VaultMaze
 
     void Shuffle<T>(List<T> a) { for (int i = a.Count - 1; i > 0; i--) { int j = (int)Math.Floor(rng.Next() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } }
 
+    // ---- generation tuning (backrooms: loopy, open halls with pillars, things spread out) ----
+    public const double BRAID = 0.4, PILLAR_REMOVE = 0.5;
+    public const int HALLS = 5, DOORS = 24, SHUTTERS = 12, BOTTLES = 9, CAMERA_SPOTS = 16;
+    public List<Room> halls = new List<Room>(); // open areas, in tile coordinates
+
+    static bool IsEdge(int x, int y) => (x % 2 == 0 && y % 2 == 1) || (x % 2 == 1 && y % 2 == 0); // wall between two cells
+    static int Manhattan(Tile a, Tile b) => Math.Abs(a.x - b.x) + Math.Abs(a.y - b.y);
+
     void Generate()
     {
         // 1) DFS maze
@@ -105,52 +113,60 @@ public class VaultMaze
             grid[by * 2 + 1, bx * 2 + 1] = 0;
             visited.Add(by * cw + bx); stack.Add((bx, by));
         }
-        // 2) braid -> loops
+        // 2) heavy braid -> lots of loops and alternate routes
         for (int y = 1; y < h - 1; y++) for (int x = 1; x < w - 1; x++)
-        {
-            if (grid[y, x] != 1) continue;
-            bool hz = x % 2 == 0 && y % 2 == 1, vt = x % 2 == 1 && y % 2 == 0;
-            if ((hz || vt) && rng.Next() < 0.16) grid[y, x] = 0;
-        }
+            if (grid[y, x] == 1 && IsEdge(x, y) && rng.Next() < BRAID) grid[y, x] = 0;
         // 3) rooms
         AddRoom("containment", 0, 0, 2, 2);
         AddRoom("power", cw - 3, 0, 3, 2);
         AddRoom("surveillance", 0, ch - 2, 3, 2);
         AddRoom("central", cw / 2 - 1, ch / 2 - 1, 2, 2);
         AddRoom("emergency", cw - 2, ch - 2, 2, 2);
-        // 4) doors on passages
+        // 3a) the heavy braid opens rooms on many sides: trim each room back to MAX_ROOM_OPENINGS (never disconnecting anything)
+        foreach (var rm in rooms.Values) TrimOpenings(rm);
+        // 3b) open halls: clear every wall between cells in a block; the cell corners stay as pillars (some removed)
+        for (int attempt = 0; attempt < 200 && halls.Count < HALLS; attempt++)
+        {
+            int hw = 3 + (int)(rng.Next() * 3), hh = 3 + (int)(rng.Next() * 2);
+            int hx = (int)(rng.Next() * (cw - hw + 1)), hy = (int)(rng.Next() * (ch - hh + 1));
+            var hr = new Room { name = "hall_" + (halls.Count + 1), x = hx * 2 + 1, y = hy * 2 + 1, w = hw * 2 - 1, h = hh * 2 - 1 };
+            hr.cx = hr.x + hr.w / 2; hr.cy = hr.y + hr.h / 2;
+            bool clash = false;
+            foreach (var rm in rooms.Values) if (Overlaps(hr, rm, 3)) clash = true;   // keep a corridor ring around rooms
+            foreach (var o in halls) if (Overlaps(hr, o, 2)) clash = true;            // halls don't merge into one blob
+            if (clash) continue;
+            for (int yy = hr.y; yy < hr.y + hr.h; yy++) for (int xx = hr.x; xx < hr.x + hr.w; xx++)
+            {
+                if (grid[yy, xx] == 0) continue;
+                if (IsEdge(xx, yy) || rng.Next() < PILLAR_REMOVE) grid[yy, xx] = 0;
+            }
+            halls.Add(hr);
+        }
+        // 4) doors on corridor passages (not in halls: you'd just walk around them)
         var cands = new List<Tile>();
         for (int y = 1; y < h - 1; y++) for (int x = 1; x < w - 1; x++)
-        {
-            if (grid[y, x] != 0 || InRoomPadded(x, y)) continue;
-            bool hz = x % 2 == 0 && y % 2 == 1, vt = x % 2 == 1 && y % 2 == 0;
-            if (hz || vt) cands.Add(new Tile(x, y));
-        }
+            if (grid[y, x] == 0 && IsEdge(x, y) && !InRoomPadded(x, y) && HallAt(x, y, 1) == null) cands.Add(new Tile(x, y));
         Shuffle(cands);
         var picked = new List<Tile>();
         foreach (var c in cands)
         {
-            if (picked.Count >= 16) break;
-            if (picked.Exists(p => Math.Abs(p.x - c.x) + Math.Abs(p.y - c.y) < 5)) continue;
+            if (picked.Count >= DOORS) break;
+            if (picked.Exists(p => Manhattan(p, c) < 6)) continue;
             picked.Add(c);
         }
         foreach (var p in picked) AddDoor(p.x, p.y, "door", false);
         // 5) shutters: walls the BROKER can open
         var sc = new List<Tile>();
         for (int y = 1; y < h - 1; y++) for (int x = 1; x < w - 1; x++)
-        {
-            if (grid[y, x] != 1) continue;
-            bool hz = x % 2 == 0 && y % 2 == 1, vt = x % 2 == 1 && y % 2 == 0;
-            if (hz || vt) sc.Add(new Tile(x, y));
-        }
+            if (grid[y, x] == 1 && IsEdge(x, y)) sc.Add(new Tile(x, y));
         Shuffle(sc);
         int ns = 0;
-        foreach (var s in sc)
+        foreach (var t in sc)
         {
-            if (ns >= 8) break;
-            if (doors.Exists(d => Math.Abs(d.x - s.x) + Math.Abs(d.y - s.y) < 4)) continue;
-            if (InRoomPadded(s.x, s.y)) continue; // never bypass an escape-room lockdown
-            grid[s.y, s.x] = 0; AddDoor(s.x, s.y, "shutter", true); ns++;
+            if (ns >= SHUTTERS) break;
+            if (doors.Exists(d => Math.Abs(d.x - t.x) + Math.Abs(d.y - t.y) < 3) || HallAt(t.x, t.y, 1) != null) continue;
+            if (InRoomPadded(t.x, t.y)) continue; // never bypass an escape-room lockdown
+            grid[t.y, t.x] = 0; AddDoor(t.x, t.y, "shutter", true); ns++;
         }
         // 5b) room gates: every opening into a puzzle room becomes a lockdown gate; the central room gets blast doors
         foreach (var rn in new[] { "power", "surveillance", "emergency", "central" })
@@ -165,7 +181,14 @@ public class VaultMaze
                 doors.Add(g); doorAt[Key(xx, yy)] = g;
             }
         }
-        // 6) lockers
+        start = new Tile(rooms["containment"].cx, rooms["containment"].cy);
+        exitPos = new Tile(rooms["central"].cx, rooms["central"].cy);
+        // free cell centres outside rooms
+        var floor = new List<Tile>();
+        for (int y = 1; y < h - 1; y++) for (int x = 1; x < w - 1; x++)
+            if (grid[y, x] == 0 && !doorAt.ContainsKey(Key(x, y)) && x % 2 == 1 && y % 2 == 1 && RoomAt(x, y) == null) floor.Add(new Tile(x, y));
+        Shuffle(floor);
+        // 6) lockers: two in each puzzle room, plus one against a wall in every zone so there is always a hiding spot nearby
         var spots = new List<Tile>();
         foreach (var kv in rooms)
         {
@@ -173,32 +196,74 @@ public class VaultMaze
             var rm = kv.Value;
             spots.Add(new Tile(rm.x, rm.y)); spots.Add(new Tile(rm.x + rm.w - 1, rm.y + rm.h - 1));
         }
-        for (int i = 0; i < 4 && cands.Count > 0; i++)
+        foreach (var z in ZONE_LIST)
         {
-            var c = cands[(i * 7 + 3) % cands.Count];
-            if (doorAt.ContainsKey(Key(c.x, c.y))) continue;
-            Tile cell = (grid[c.y, c.x - 1] == 0 && (c.x - 1) % 2 == 1) ? new Tile(c.x - 1, c.y) : new Tile(c.x, c.y - 1);
-            if (InBounds(cell.x, cell.y) && grid[cell.y, cell.x] == 0) spots.Add(cell);
+            foreach (var t in floor)
+            {
+                if (ZoneOf(t.x, t.y) != z || HallAt(t.x, t.y) != null || WallCount(t) < 2) continue;
+                if (spots.Exists(o => Manhattan(o, t) < 6) || Manhattan(t, start) < 4) continue;
+                spots.Add(t); break;
+            }
+            if (!spots.Exists(o => ZoneOf(o.x, o.y) == z)) // fallback: any free cell in the zone
+                foreach (var t in floor)
+                    if (ZoneOf(t.x, t.y) == z && !spots.Exists(o => Manhattan(o, t) < 4) && Manhattan(t, start) >= 4) { spots.Add(t); break; }
         }
         for (int i = 0; i < spots.Count; i++) lockers.Add(new Locker { id = "locker_" + (i + 1), x = spots[i].x, y = spots[i].y, zone = ZoneOf(spots[i].x, spots[i].y) });
-        // 7) items
-        start = new Tile(rooms["containment"].cx, rooms["containment"].cy);
-        exitPos = new Tile(rooms["central"].cx, rooms["central"].cy);
-        var floor = new List<Tile>();
-        for (int y = 1; y < h - 1; y++) for (int x = 1; x < w - 1; x++)
-            if (grid[y, x] == 0 && !doorAt.ContainsKey(Key(x, y)) && x % 2 == 1 && y % 2 == 1 && RoomAt(x, y) == null) floor.Add(new Tile(x, y));
-        Shuffle(floor);
-        for (int i = 0; i < Math.Min(6, floor.Count); i++) items.Add(new Item { type = "bottle", x = floor[i].x, y = floor[i].y });
-        // camera spots: straight corridor cells, spread out
-        var straight = floor.FindAll(t => (Walkable(t.x - 1, t.y) && Walkable(t.x + 1, t.y) && !Walkable(t.x, t.y - 1) && !Walkable(t.x, t.y + 1)) ||
-                                          (Walkable(t.x, t.y - 1) && Walkable(t.x, t.y + 1) && !Walkable(t.x - 1, t.y) && !Walkable(t.x + 1, t.y)));
-        foreach (var t in straight)
+        // 7) items, spread out
+        foreach (var t in floor)
         {
-            if (cameraSpots.Count >= 10) break;
-            if (Math.Abs(t.x - start.x) + Math.Abs(t.y - start.y) < 6) continue;
-            if (cameraSpots.Exists(c => Math.Abs(c.x - t.x) + Math.Abs(c.y - t.y) < 6)) continue;
-            cameraSpots.Add(t);
+            if (items.Count >= BOTTLES) break;
+            if (lockers.Exists(l => l.x == t.x && l.y == t.y) || items.Exists(o => Math.Abs(o.x - t.x) + Math.Abs(o.y - t.y) < 6)) continue;
+            items.Add(new Item { type = "bottle", x = t.x, y = t.y });
         }
+        // camera spots: straight corridor cells first, then hall edges; spread out
+        bool Straight(Tile t) => (Walkable(t.x - 1, t.y) && Walkable(t.x + 1, t.y) && !Walkable(t.x, t.y - 1) && !Walkable(t.x, t.y + 1)) ||
+                                 (Walkable(t.x, t.y - 1) && Walkable(t.x, t.y + 1) && !Walkable(t.x - 1, t.y) && !Walkable(t.x + 1, t.y));
+        bool HallEdge(Tile t) { var hr = HallAt(t.x, t.y); return hr != null && (t.x == hr.x || t.y == hr.y || t.x == hr.x + hr.w - 1 || t.y == hr.y + hr.h - 1); }
+        foreach (var pass in new Func<Tile, bool>[] { Straight, HallEdge })
+            foreach (var t in floor)
+            {
+                if (cameraSpots.Count >= CAMERA_SPOTS) break;
+                if (!pass(t) || Manhattan(t, start) < 6 || cameraSpots.Exists(c => Manhattan(c, t) < 6)) continue;
+                if (lockers.Exists(l => l.x == t.x && l.y == t.y)) continue;
+                cameraSpots.Add(t);
+            }
+    }
+
+    public const int MAX_ROOM_OPENINGS = 3;
+    void TrimOpenings(Room rm)
+    {
+        var open = new List<Tile>();
+        for (int yy = rm.y - 1; yy <= rm.y + rm.h; yy++) for (int xx = rm.x - 1; xx <= rm.x + rm.w; xx++)
+        {
+            bool inside = xx >= rm.x && xx < rm.x + rm.w && yy >= rm.y && yy < rm.y + rm.h;
+            bool corner = (xx == rm.x - 1 || xx == rm.x + rm.w) && (yy == rm.y - 1 || yy == rm.y + rm.h);
+            if (!inside && !corner && InBounds(xx, yy) && grid[yy, xx] == 0) open.Add(new Tile(xx, yy));
+        }
+        Shuffle(open);
+        int total = Reachable(1, 1).Count;
+        foreach (var t in open)
+        {
+            if (open.Count <= MAX_ROOM_OPENINGS) break;
+            grid[t.y, t.x] = 1;
+            if (Reachable(1, 1).Count == total - 1) { total--; open = open.FindAll(o => o.x != t.x || o.y != t.y); }
+            else grid[t.y, t.x] = 0;
+        }
+    }
+
+    static bool Overlaps(Room a, Room b, int pad) =>
+        a.x - pad < b.x + b.w && b.x - pad < a.x + a.w && a.y - pad < b.y + b.h && b.y - pad < a.y + a.h;
+
+    public Room HallAt(int x, int y, int pad = 0)
+    {
+        foreach (var hr in halls) if (x >= hr.x - pad && x < hr.x + hr.w + pad && y >= hr.y - pad && y < hr.y + hr.h + pad) return hr;
+        return null;
+    }
+
+    int WallCount(Tile t)
+    {
+        int n = 0; for (int d = 0; d < 4; d++) if (!InBounds(t.x + DIRS[d, 0], t.y + DIRS[d, 1]) || grid[t.y + DIRS[d, 1], t.x + DIRS[d, 0]] == 1) n++;
+        return n;
     }
 
     void AddRoom(string name, int cx, int cy, int cww, int chh)

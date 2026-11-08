@@ -37,10 +37,11 @@ public class BrokerAgent : MonoBehaviour
 
     float Speed()
     {
-        // deliberately slower than the player's run (7.2 u/s): its danger is prediction + maze control, not speed
-        float b = state switch { "PATROL" => 1.5f, "INVESTIGATE" => 2.1f, "SEARCH" => 1.8f, "CHASE" => 2.9f, "INTERCEPT" => 2.5f, "GUARD" => 1.4f, _ => 1.8f };
+        // a fraction of the player's run speed, so tuning the player keeps the balance: always slower than a run,
+        // its danger is prediction + maze control, not speed
+        float b = state switch { "PATROL" => 0.42f, "INVESTIGATE" => 0.58f, "SEARCH" => 0.5f, "CHASE" => 0.81f, "INTERCEPT" => 0.69f, "GUARD" => 0.39f, _ => 0.5f };
         if (game.day >= 3) b *= 1.1f;
-        return (AlarmOn ? b * 1.2f : b) * VaultGame.TILE;
+        return (AlarmOn ? b * 1.2f : b) * game.player.runSpeed;
     }
 
     void GoTo(Tile t, bool ignoreDoors = false)

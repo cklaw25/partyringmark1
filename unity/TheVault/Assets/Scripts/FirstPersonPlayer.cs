@@ -1,9 +1,11 @@
 // First-person player: momentum-based movement (walk / run / crouch, jump, air-slide chaining), camera feel, flashlight.
 // Hiding is handled by VaultGame.
 //
-// Slide chaining: jump, press C in mid-air for a small boost, keep C held to land into a slide (friction slowly eats
-// the speed), jump again quickly to keep it. Landing WITHOUT a slide drops you back to run speed. The boost shrinks as
-// you approach maxSpeed, so good chaining settles around ~8.5-9.5 u/s versus 7.2 for a plain run - and it is loud.
+// Slide (all taps, no holding): tap C while sprinting or in mid-air to slide (mid-air adds a small boost, once per jump).
+// You land into a slide that keeps going until you are moving slowly; tap C again to stand up. SPACE while sliding is a
+// slide-hop: a short jump that keeps most of your momentum, so slide -> hop -> tap C -> land sliding -> hop chains speed.
+// Landing WITHOUT a slide drops you back to run speed. The boost shrinks as you approach maxSpeed, so good chaining
+// settles a couple of u/s above a plain run - and it is loud.
 using UnityEngine;
 
 public class FirstPersonPlayer : MonoBehaviour
@@ -18,12 +20,15 @@ public class FirstPersonPlayer : MonoBehaviour
     float pitch, yaw;
 
     [Header("Ground")]
-    public float walkSpeed = 4.2f, runSpeed = 7.2f, crouchSpeed = 2.2f, mouseSens = 2.2f;
+    public float walkSpeed = 5.0f, runSpeed = 8.5f, crouchSpeed = 2.8f, mouseSens = 2.2f;
     public float groundAccel = 50f, groundDecel = 40f;
     [Header("Air / jump")]
-    public float gravity = 22f, jumpVelocity = 6.5f, airAccel = 8f, coyoteTime = 0.1f, jumpBuffer = 0.15f;
+    public float gravity = 22f, jumpVelocity = 6.5f, airAccel = 9f, coyoteTime = 0.1f, jumpBuffer = 0.15f;
     [Header("Slide")]
-    public float slideBoost = 1.5f, slideFriction = 7f, slideSteer = 2f, maxSpeed = 10f;
+    public float slideBoost = 1.8f, slideFriction = 5f, slideSteer = 2f, maxSpeed = 12f;
+    public float slideStopSpeed = 3f;   // a slide ends here (slow, not a full halt)
+    public float hopHeight = 0.7f;      // slide-hop jump velocity, as a fraction of a normal jump
+    public float hopKeep = 0.95f;       // horizontal speed kept by a slide-hop
     [Header("Camera feel")]
     [Range(0, 1)] public float headBobScale = 1f;
     public float baseFov = 70f, maxFovBoost = 10f;
@@ -59,7 +64,7 @@ public class FirstPersonPlayer : MonoBehaviour
         var fl = new GameObject("Flashlight");
         fl.transform.SetParent(camGo.transform, false);
         flashlight = fl.AddComponent<Light>();
-        flashlight.type = LightType.Spot; flashlight.range = 16; flashlight.spotAngle = 60; flashlight.intensity = 2.2f;
+        flashlight.type = LightType.Spot; flashlight.range = 20; flashlight.spotAngle = 60; flashlight.intensity = 2.2f;
         flashlight.color = new Color(1f, 0.95f, 0.85f); flashlight.shadows = LightShadows.Soft;
     }
 
@@ -96,15 +101,22 @@ public class FirstPersonPlayer : MonoBehaviour
         Vector3 h = new Vector3(velocity.x, 0, velocity.z);
         float spd = h.magnitude;
 
-        // ---- air slide: one boost per airtime, shrinking as you near maxSpeed ----
-        if (state == MoveState.Air && cDown && !slideUsed)
+        // ---- C taps: start / boost / cancel a slide ----
+        if (cDown)
         {
-            slideUsed = true; state = MoveState.AirSlide;
-            Vector3 dir = spd > 0.1f ? h / spd : (moving ? wishDir : transform.forward);
-            float room = Mathf.Clamp01((maxSpeed - spd) / (maxSpeed - runSpeed));
-            spd = Mathf.Min(maxSpeed, spd + slideBoost * Mathf.Max(room, spd < runSpeed ? 1f : 0f));
-            h = dir * spd;
-            fovKick = 4f;
+            if (state == MoveState.Air && !slideUsed)
+            {
+                // air slide: one boost per airtime, shrinking as you near maxSpeed
+                slideUsed = true; state = MoveState.AirSlide;
+                Vector3 dir = spd > 0.1f ? h / spd : (moving ? wishDir : transform.forward);
+                float room = Mathf.Clamp01((maxSpeed - spd) / (maxSpeed - runSpeed));
+                spd = Mathf.Min(maxSpeed, spd + slideBoost * Mathf.Max(room, spd < runSpeed ? 1f : 0f));
+                h = dir * spd;
+                fovKick = 4f;
+            }
+            else if (state == MoveState.AirSlide) state = MoveState.Air;            // get out of the slide pose (no second boost)
+            else if (state == MoveState.GroundSlide) state = MoveState.Ground;      // stand up, keeping speed
+            else if (state == MoveState.Ground && moving && spd > walkSpeed + 0.5f) { state = MoveState.GroundSlide; fovKick = 2.5f; } // sprint slide, no boost
         }
 
         // ---- horizontal velocity per state ----
@@ -125,7 +137,7 @@ public class FirstPersonPlayer : MonoBehaviour
                 Vector3 dir = spd > 0.01f ? h.normalized : transform.forward;
                 if (moving) dir = Vector3.MoveTowards(dir, wishDir, slideSteer * dt).normalized;
                 h = dir * spd;
-                if (!cHeld || spd <= runSpeed) state = MoveState.Ground;
+                if (spd <= slideStopSpeed) state = MoveState.Ground; // slows to a crouch if C is held, else stands
                 break;
             }
             default: // Air / AirSlide: keep momentum, a little steering, never gain speed from steering
@@ -138,10 +150,11 @@ public class FirstPersonPlayer : MonoBehaviour
                 break;
         }
 
-        // ---- jump (buffered, with coyote time) ----
+        // ---- jump (buffered, with coyote time); from a slide it is a low slide-hop that keeps momentum ----
         if (buffer > 0 && (Grounded || coyote > 0))
         {
-            velocity.y = jumpVelocity;
+            if (state == MoveState.GroundSlide) { velocity.y = jumpVelocity * hopHeight; h *= hopKeep; }
+            else velocity.y = jumpVelocity;
             state = MoveState.Air; slideUsed = false; buffer = 0; coyote = 0;
         }
 
@@ -165,7 +178,7 @@ public class FirstPersonPlayer : MonoBehaviour
         if (!Grounded && cc.isGrounded && velocity.y <= 0)
         {
             landedThisFrame = true; landSpeed = HorizontalSpeed;
-            if (state == MoveState.AirSlide && cHeld) state = MoveState.GroundSlide;
+            if (state == MoveState.AirSlide) state = MoveState.GroundSlide;
             else
             {
                 state = MoveState.Ground;
